@@ -177,15 +177,31 @@ echo ""
 echo -e "${BLUE}[7/9]${NC} 初始化知识库结构..."
 
 DIRS_CREATED=0
-for dir in "10_Projects" "20_Areas/Manual" "20_Areas/AI_Synthesized" "30_Resources/00_Inbox" "30_Resources/Library" "40_Archives"; do
+for dir in "10_Projects" "20_Areas/manual" "20_Areas/01principles" "20_Areas/02playbooks" "20_Areas/02templates" "20_Areas/02cases" "20_Areas/03notes" "30_Resources/Library" "30_Resources/summary" "40_Archives" "50_Raw/inbox" "50_Raw/merged"; do
     if [ ! -d "$dir" ]; then
         mkdir -p "$dir"
         DIRS_CREATED=$((DIRS_CREATED + 1))
     fi
 done
 
-if [ $DIRS_CREATED -gt 0 ]; then
-    echo -e "      ${GREEN}✓${NC} 已创建 $DIRS_CREATED 个目录"
+# 创建 todo.md 和 todo_archive.md（如果不存在）
+FILES_CREATED=0
+if [ ! -f "30_Resources/todo.md" ]; then
+    touch "30_Resources/todo.md"
+    FILES_CREATED=$((FILES_CREATED + 1))
+fi
+if [ ! -f "30_Resources/todo_archive.md" ]; then
+    touch "30_Resources/todo_archive.md"
+    FILES_CREATED=$((FILES_CREATED + 1))
+fi
+
+if [ $DIRS_CREATED -gt 0 ] || [ $FILES_CREATED -gt 0 ]; then
+    if [ $DIRS_CREATED -gt 0 ]; then
+        echo -e "      ${GREEN}✓${NC} 已创建 $DIRS_CREATED 个目录"
+    fi
+    if [ $FILES_CREATED -gt 0 ]; then
+        echo -e "      ${GREEN}✓${NC} 已创建 $FILES_CREATED 个文件"
+    fi
 else
     echo -e "      ${GREEN}✓${NC} 知识库结构已存在"
 fi
@@ -198,42 +214,51 @@ if [ ! -f "README.md" ]; then
     cat > README.md << 'EOF'
 # 我的知识库
 
-基于 PARA + CODE 方法论的个人知识管理系统。
+基于 PARA + CODE + 金字塔原理 的个人知识管理系统。
 
 ## 快速开始
 
 ### 在 Cursor 中
 
 ```text
-/pkm inbox 学习笔记...     # 快速捕获
-/pkm addProject             # 创建新项目
-/pkm todo <内容>            # 添加新任务
-/pkm todo list              # 列出所有任务
-/pkm                        # 全自动整理
-/pkm help                   # 查看帮助
+@pkm inbox 学习笔记...     # 快速捕获
+@pkm addProject [项目名称]  # 创建新项目（如果未提供名称则询问）
+@pkm todo <内容>            # 添加新任务
+@pkm todo list              # 列出所有任务
+@pkm                        # 一键整理知识
+@pkm help                   # 查看帮助
 ```
 
 ### 在 Claude Code 中
 
 ```text
-@PKM inbox 学习笔记...     # 快速捕获
-@PKM addProject             # 创建新项目
-@PKM todo <内容>            # 添加新任务
-@PKM todo list              # 列出所有任务
-@PKM                        # 全自动整理
-@PKM help                   # 查看帮助
+@pkm inbox 学习笔记...     # 快速捕获
+@pkm addProject [项目名称]  # 创建新项目（如果未提供名称则询问）
+@pkm todo <内容>            # 添加新任务
+@pkm todo list              # 列出所有任务
+@pkm                        # 一键整理知识
+@pkm help                   # 查看帮助
 ```
 
 ## 知识库结构
 
 - `10_Projects/` - 短期项目
 - `20_Areas/` - 长期领域
-  - `Manual/` - 人工知识（AI 只读）
-  - `AI_Synthesized/` - AI 蒸馏知识
+  - `manual/` - 受保护区（AI 只读）
+  - `01principles/` - 原则层
+  - `02playbooks/` - 应用层：标准化流程
+  - `02templates/` - 应用层：可复用模版
+  - `02cases/` - 应用层：具体案例
+  - `03notes/` - 整理知识层
 - `30_Resources/` - 参考资料
-  - `00_Inbox/` - 待分类
-  - `Library/` - 已分类
+  - `Library/` - 资料库
+  - `summary/` - 报告汇总
+  - `todo.md` - 待办任务列表
+  - `todo_archive.md` - 已完成任务归档
 - `40_Archives/` - 归档
+- `50_Raw/` - 统一素材区
+  - `inbox/` - 待分类
+  - `merged/` - 合并后的素材
 
 ## 详细文档
 
@@ -281,21 +306,13 @@ if [ "$INSTALL_OK" = true ]; then
     echo ""
     echo -e "${BLUE}📚 使用方法：${NC}"
     echo ""
-    echo -e "  ${YELLOW}Cursor${NC}:"
-    echo -e "    /pkm inbox 学习笔记...    ${GREEN}# 快速捕获${NC}"
-    echo -e "    /pkm addProject           ${GREEN}# 创建新项目（自动命名：时间戳_XXX）${NC}"
-    echo -e "    /pkm todo <内容>          ${GREEN}# 添加新任务${NC}"
-    echo -e "    /pkm todo list            ${GREEN}# 列出所有任务${NC}"
-    echo -e "    /pkm                      ${GREEN}# 全自动整理${NC}"
-    echo -e "    /pkm help                 ${GREEN}# 查看帮助${NC}"
-    echo ""
-    echo -e "  ${YELLOW}Claude Code${NC}:"
-    echo -e "    @PKM inbox 学习笔记...    ${GREEN}# 快速捕获${NC}"
-    echo -e "    @PKM addProject           ${GREEN}# 创建新项目（自动命名：时间戳_XXX）${NC}"
-    echo -e "    @PKM todo <内容>          ${GREEN}# 添加新任务${NC}"
-    echo -e "    @PKM todo list            ${GREEN}# 列出所有任务${NC}"
-    echo -e "    @PKM                      ${GREEN}# 全自动整理${NC}"
-    echo -e "    @PKM help                 ${GREEN}# 查看帮助${NC}"
+    echo -e "  ${YELLOW}Cursor / Claude Code${NC}:"
+    echo -e "    @pkm inbox 学习笔记...    ${GREEN}# 快速捕获${NC}"
+    echo -e "    @pkm addProject [项目名称] ${GREEN}# 创建新项目（如果未提供名称则询问）${NC}"
+    echo -e "    @pkm todo <内容>          ${GREEN}# 添加新任务${NC}"
+    echo -e "    @pkm todo list            ${GREEN}# 列出所有任务${NC}"
+    echo -e "    @pkm                      ${GREEN}# 一键整理知识${NC}"
+    echo -e "    @pkm help                 ${GREEN}# 查看帮助${NC}"
     echo ""
     echo -e "${BLUE}📖 详细文档：${NC}"
     echo -e "  • .pkm/Skills/README.md"

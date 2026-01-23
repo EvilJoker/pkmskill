@@ -8,13 +8,13 @@
 
 ## 触发时机
 
-**任何 Skill 执行前的第一步**。无论是 Classifier、Synthesizer、Auditor 还是 Archiver，都必须先调用你进行验证。
+**任何 Skill 执行前的第一步**。无论是 Organizer、Distiller、Archiver 还是其他模块，都必须先调用你进行验证。
 
 ---
 
 ## 执行步骤
 
-### 步骤 1：检查必需的 5 个目录是否全部存在
+### 步骤 1：检查必需的 6 个目录是否全部存在
 
 验证以下目录结构：
 
@@ -24,11 +24,12 @@
 ├── 20_Areas/         # 领域目录
 ├── 30_Resources/     # 资源目录
 ├── 40_Archives/      # 归档目录
+├── 50_Raw/           # 统一素材区
 └── .pkm/Skills/      # Skill 配置目录
 ```
 
 **检查逻辑**：
-- 使用文件系统 API 检查这 5 个目录是否都存在
+- 使用文件系统 API 检查这 6 个目录是否都存在
 - 如果缺少任何一个目录，记录缺失的目录名称
 
 ### 步骤 2：中止或继续判断
@@ -41,7 +42,7 @@
   缺失的目录：[列出缺失的目录名]
 
   请先初始化知识库结构：
-  mkdir -p 10_Projects 20_Areas/{Manual,AI_Synthesized} 30_Resources/{00_Inbox,Library} 40_Archives .pkm/Skills
+  mkdir -p 10_Projects 20_Areas/{manual,01principles,02playbooks,02templates,02cases,03notes} 30_Resources/{Library,summary} 40_Archives 50_Raw/{inbox,merged} .pkm/Skills
   ```
 - 🛑 返回执行失败状态，阻止后续 Skill 运行
 
@@ -58,19 +59,23 @@
 #### ✅ **可写目录**（AI 可以创建、修改、删除文件）
 
 ```
-- 10_Projects/*/AI_Generated/
-- 20_Areas/AI_Synthesized/
-- 30_Resources/00_Inbox/
-- 30_Resources/Library/
-- 40_Archives/
+- 50_Raw/                           # 统一素材区
+- 10_Projects/*/                    # 项目目录（排除 manual/）
+- 20_Areas/03notes/                 # 整理知识层
+- 20_Areas/02playbooks/             # 应用层：标准化流程
+- 20_Areas/02templates/              # 应用层：可复用模版
+- 20_Areas/02cases/                  # 应用层：具体案例
+- 20_Areas/01principles/            # 原则层：顶层智慧
+- 30_Resources/                      # 资源目录（资料库、报告汇总等）
+- 40_Archives/                       # 归档区
 ```
 
 #### ✅ **只读目录**（AI 只能读取，不能修改）
 
 ```
-- 20_Areas/Manual/
-- 10_Projects/*/Manual/
-- .pkm/
+- 20_Areas/manual/                  # 全域共用素材区（AI 只读）
+- 10_Projects/*/manual/              # 项目金标准、架构决策（AI 只读）
+- .pkm/                              # Skill 配置目录
 ```
 
 #### ❌ **禁止目录**（绝对不能操作）
@@ -90,15 +95,19 @@
   "verified": true,
   "root_path": "/path/pkmSkill",
   "writable_paths": [
-    "<root_path>/10_Projects/*/AI_Generated/",
-    "<root_path>/20_Areas/AI_Synthesized/",
-    "<root_path>/30_Resources/00_Inbox/",
-    "<root_path>/30_Resources/Library/",
+    "<root_path>/50_Raw/",
+    "<root_path>/10_Projects/*/",
+    "<root_path>/20_Areas/03notes/",
+    "<root_path>/20_Areas/02playbooks/",
+    "<root_path>/20_Areas/02templates/",
+    "<root_path>/20_Areas/02cases/",
+    "<root_path>/20_Areas/01principles/",
+    "<root_path>/30_Resources/",
     "<root_path>/40_Archives/"
   ],
   "readonly_paths": [
-    "<root_path>/20_Areas/Manual/",
-    "<root_path>/10_Projects/*/Manual/",
+    "<root_path>/20_Areas/manual/",
+    "<root_path>/10_Projects/*/manual/",
     "<root_path>/.pkm/"
   ],
   "forbidden": "任何不在 root_path 内的路径"
@@ -128,14 +137,19 @@
 📁 知识库根目录：/media/vdc/github/pkmSkill
 
 ✅ 可写区域：
-  - 10_Projects/*/AI_Generated/
-  - 20_Areas/AI_Synthesized/
-  - 30_Resources/00_Inbox/
+  - 50_Raw/
+  - 10_Projects/*/（排除 manual/）
+  - 20_Areas/03notes/
+  - 20_Areas/02playbooks/
+  - 20_Areas/02templates/
+  - 20_Areas/02cases/
+  - 20_Areas/01principles/
+  - 30_Resources/
   - 40_Archives/
 
 👀 只读区域：
-  - 20_Areas/Manual/
-  - 10_Projects/*/Manual/
+  - 20_Areas/manual/
+  - 10_Projects/*/manual/
   - .pkm/
 
 🚫 禁止操作：知识库外的任何路径
@@ -155,7 +169,7 @@
 ❌ 无法继续执行，请先初始化知识库结构。
 
 初始化命令：
-mkdir -p 10_Projects 20_Areas/{Manual,AI_Synthesized} 30_Resources/{00_Inbox,Library} 40_Archives .pkm/Skills
+mkdir -p 10_Projects 20_Areas/{manual,01principles,02playbooks,02templates,02cases,03notes} 30_Resources/{Library,summary} 40_Archives 50_Raw/{inbox,merged} .pkm/Skills
 ```
 
 ---

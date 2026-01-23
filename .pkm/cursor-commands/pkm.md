@@ -14,9 +14,15 @@
 
 ## 所有命令
 
-### 🚀 快速捕获（最常用）
+### 主流程命令
 
-- `/pkm inbox <内容>` - 快速保存信息到 Inbox（自动识别任务，推荐使用 todo）
+- `/pkm` - 智能整理主流程，自动执行 Verify → Archive → Organize → Distill 四个阶段
+
+### 独立流程命令
+
+#### 捕获流程
+
+- `/pkm inbox <内容>` - 快速捕获碎片化信息到 `50_Raw/inbox/`
 - `/pkm inbox --online <内容>` - 抓取网页内容并保存
 
 **示例**：
@@ -27,7 +33,7 @@
 /pkm inbox --online 这篇文章很有用 https://example.com
 ```
 
-### 🤔 智能咨询
+#### Express 流程
 
 - `/pkm advice <问题>` - 默认模式（AI 通用知识 + 私域知识库）
 - `/pkm advice --scope <范围> <问题>` - 指定范围模式
@@ -57,28 +63,30 @@
 /pkm advice 这篇 TypeScript 笔记应该放哪个目录？
 ```
 
-### 🤖 智能模式（推荐）
+### 扩展功能命令
 
-- `/pkm` - 全自动模式，依次执行所有需要的操作
+#### 任务管理
 
-### 📋 手动操作
-
-- `/pkm addProject` - 创建新项目目录（自动命名为 时间戳_XXX）
 - `/pkm todo <内容>` - 添加新任务（交互式补全：想法、4象限、计划、实现思路、关联项目）
 - `/pkm todo list` - 列出所有任务（按4象限分组显示，支持筛选）
 - `/pkm todo update <id/name>` - 更新任务进展（记录：日期 + 一句话进展）
 - `/pkm todo ok <id/name>` - 完成任务（追问总结：内容、收益、价值评分，归档到 todo_archive.md）
 - `/pkm todo del <id/name>` - 删除任务
-- `/pkm classify` - 分类 Inbox 中的内容
-- `/pkm synthesize` - 蒸馏所有达到阈值的主题
-- `/pkm synthesize <主题>` - 蒸馏指定主题（如：/pkm synthesize React）
-- `/pkm audit` - 审计所有包含草稿的主题
-- `/pkm audit <主题>` - 审计指定主题（如：/pkm audit Python）
+
+#### 项目创建
+
+- `/pkm addProject` - 创建新项目目录（自动命名为 时间戳_XXX）
+
+#### 手动操作（主流程子命令）
+
+- `/pkm organize` - 组织分类 50_Raw/ 中的内容
+- `/pkm distill` - 提炼 20_Areas/03notes/ 中的知识
+- `/pkm distill <主题>` - 提炼指定主题（如：/pkm distill React）
 - `/pkm archive` - 归档所有包含 COMPLETED.md 的项目
 - `/pkm archive <项目>` - 归档指定项目（如：/pkm archive UserAuth）
 - `/pkm verify` - 仅验证知识库结构
 
-### ℹ️ 帮助与信息
+#### 帮助
 
 - `/pkm help` - 显示此帮助信息
 
@@ -90,7 +98,7 @@
 
 参考 `.pkm/Skills/PKM/_Verifier.md`：
 
-- 检查 5 个必需目录是否存在
+- 检查 6 个必需目录是否存在（10_Projects、20_Areas、30_Resources、40_Archives、50_Raw、.pkm）
 - 生成操作白名单
 - 验证失败则中止
 
@@ -104,9 +112,9 @@
 
 **默认模式**（不带 --online）：
 
-1. 调用 Verifier 验证 Inbox 可写
-2. AI 总结内容，生成文件名（格式：`简短标题_YYYYMMDD_HHMMSS.md`）
-3. 写入 `30_Resources/00_Inbox/文件名.md`
+1. 调用 Verifier 验证 50_Raw/inbox/ 可写
+2. AI 总结内容，生成文件名（格式：`YYYYMMDD_HHMMSS_标题_inbox.md`）
+3. 写入 `50_Raw/inbox/文件名.md`
 4. 返回确认信息
 
 **在线模式**（带 --online）：
@@ -124,7 +132,7 @@
 ```text
 ✅ 已捕获到 Inbox
 
-📄 文件：30_Resources/00_Inbox/React_useEffect依赖数组_20260113143012.md
+📄 文件：50_Raw/inbox/20260113_143012_React_useEffect依赖数组_inbox.md
 📅 时间：2026-01-13 14:30
 ```
 
@@ -133,7 +141,7 @@
 ```text
 ✅ 已捕获到 Inbox（在线模式）
 
-📄 文件：30_Resources/00_Inbox/React18新特性_20260113143100.md
+📄 文件：50_Raw/inbox/20260113_143100_React18新特性_inbox.md
 📅 时间：2026-01-13 14:31
 🔗 链接：1 个（已抓取并整理）
 📊 内容：用户笔记 + 网页内容（共 2,450 字）
@@ -143,37 +151,35 @@
 
 智能判断并依次执行：
 
-1. 扫描 `30_Resources/00_Inbox/` → 有文件 → 执行分类
-2. 扫描 `20_Areas/AI_Synthesized/` → 有主题≥10文件 → 执行蒸馏
-3. 扫描 `20_Areas/AI_Synthesized/` → 有[草稿]文件 → 执行审计
-4. 扫描 `10_Projects/` → 有COMPLETED.md → 执行归档
+1. ✅ 验证知识库结构（Verifier）
+2. 🗄️ 扫描 `10_Projects/` → 有COMPLETED.md → 执行归档（Archiver）
+3. 📦 扫描 `50_Raw/` → 有文件 → 执行组织分类（Organizer）
+4. 💎 扫描 `20_Areas/03notes/` → 有新增/变动 → 执行提炼（Distiller）
 
-#### `/pkm classify`
+#### `/pkm organize`
 
-调用 `.pkm/Skills/PKM/_Classifier.md`：
+调用 `.pkm/Skills/PKM/_Organizer.md`：
 
-- 扫描 Inbox 中的所有文件
-- 判断类型：任务 / 知识片段 / 参考资料
-- 分流到 Projects/Areas/Resources
-- 智能归并主题（避免主题过度分散）
+- 扫描 `50_Raw/` 中的所有文件（包含 `inbox/` 和其他待分类素材）
+- 按主题/类型合并同类内容到 `50_Raw/merged/`
+- 判断类型：可执行任务 / 知识片段 / 参考资料
+- 分类归位：
+  - 任务 → `10_Projects/`（直接放在项目目录下）
+  - 知识 → `20_Areas/03notes/<领域>/`（先放在 notes 层）
+  - 资料 → `30_Resources/Library/`
+- 整理完清空 `50_Raw/`
 
-#### `/pkm synthesize [主题]`
+#### `/pkm distill [主题]`
 
-调用 `.pkm/Skills/PKM/_Synthesizer.md`：
+调用 `.pkm/Skills/PKM/_Distiller.md`：
 
-- 如果指定主题：蒸馏该主题
-- 如果不指定：蒸馏所有达到阈值（10+文件）的主题
-- 整合碎片知识，生成结构化草稿
-- 标记为 `[草稿]_主题名.md`
-
-#### `/pkm audit [主题]`
-
-调用 `.pkm/Skills/PKM/_Auditor.md`：
-
-- 如果指定主题：审计该主题
-- 如果不指定：审计所有包含草稿的主题
-- 对比 AI 草稿与 Manual 知识
-- 生成更新建议清单
+- 扫描 `20_Areas/03notes/` 各领域目录
+- 与已有知识深度整合（去重、交叉引用、结构化）
+- 按金字塔原理提炼：
+  - 零散知识（notes）+ areas 区的 manual 区（只读）→ 整理知识（notes 内按领域分类）
+  - 整理知识 → 应用知识（playbooks/templates/cases）
+  - 应用知识 → 原则知识（principles）
+- 沉淀到对应目录并生成报告到 `30_Resources/summary/`
 
 #### `/pkm addProject`
 
@@ -181,7 +187,7 @@
 
 - 在 `10_Projects/` 下创建新项目目录
 - 目录命名格式：`YYYYMMDD_HHMMSS_XXX`（时间戳在前，固定后缀 XXX）
-- 初始化项目模版结构（Manual/ 和 AI_Generated/）
+- 初始化项目模版结构（manual/ 目录）
 - 返回创建确认信息
 
 **输出示例**：
@@ -192,8 +198,7 @@
 📁 目录：10_Projects/20260113_143000_XXX/
 📅 时间：2026-01-13 14:30:00
 📂 结构：
-   ├── Manual/
-   └── AI_Generated/
+   └── manual/
 ```
 
 #### `/pkm todo [操作] [参数]`
@@ -270,15 +275,19 @@
 
 **只读区域**（AI 只能读取）：
 
-- `20_Areas/Manual/`
-- `10_Projects/*/Manual/`
+- `20_Areas/manual/`
+- `10_Projects/*/manual/`
 - `.pkm/Skills/`
 
 **可写区域**（AI 可以创建/修改/删除）：
 
-- `10_Projects/*/AI_Generated/`
-- `20_Areas/AI_Synthesized/`
-- `30_Resources/00_Inbox/` ← inbox 命令写入这里
+- `50_Raw/` ← inbox 命令写入 `50_Raw/inbox/`
+- `10_Projects/*/`（排除 manual/）
+- `20_Areas/03notes/`
+- `20_Areas/02playbooks/`
+- `20_Areas/02templates/`
+- `20_Areas/02cases/`
+- `20_Areas/01principles/`
 - `30_Resources/Library/`
 - `40_Archives/`
 
@@ -289,10 +298,10 @@
 ### ⚠️ 操作约束
 
 1. 每次操作前必须执行 Verifier 验证
-2. 不得修改 Manual/ 目录（人工知识区）
+2. 不得修改 manual/ 目录（受保护区）
 3. 不得删除或修改 .pkm/Skills/ 文件
 4. 所有文件操作必须在白名单范围内
-5. inbox 命令只能写入 `30_Resources/00_Inbox/`
+5. inbox 命令只能写入 `50_Raw/inbox/`
 
 ### 🌐 在线模式安全
 
@@ -322,7 +331,7 @@
 
 ```text
 /pkm
-# 自动执行：分类 Inbox → 蒸馏知识 → 审计草稿 → 归档项目
+# 自动执行：Verify → Archive → Organize → Distill
 ```
 
 ### 项目完成时
@@ -346,9 +355,8 @@ echo "项目已完成" > 10_Projects/MyProject/COMPLETED.md
   - `.pkm/Skills/PKM/_TodoManager.md` - 待办任务管理器
   - `.pkm/Skills/PKM/_Inbox.md` - 快速捕获器
   - `.pkm/Skills/PKM/_Verifier.md` - 范围验证
-  - `.pkm/Skills/PKM/_Classifier.md` - 智能分类
-  - `.pkm/Skills/PKM/_Synthesizer.md` - 知识蒸馏
-  - `.pkm/Skills/PKM/_Auditor.md` - 质量审计
+  - `.pkm/Skills/PKM/_Organizer.md` - 智能组织器
+  - `.pkm/Skills/PKM/_Distiller.md` - 知识提炼器
   - `.pkm/Skills/PKM/_Archiver.md` - 生命周期管理
 
 ## 知识库结构
@@ -357,15 +365,21 @@ echo "项目已完成" > 10_Projects/MyProject/COMPLETED.md
 <root>/
 ├── 10_Projects/          # 短期项目
 │   └── */
-│       ├── Manual/       # 人工知识（只读）
-│       └── AI_Generated/ # AI 生成（可写）
+│       └── manual/       # 受保护区（AI 只读）
 ├── 20_Areas/             # 长期领域
-│   ├── Manual/           # 人工知识（只读）
-│   └── AI_Synthesized/   # AI 蒸馏（可写）
+│   ├── manual/           # 受保护区（AI 只读）
+│   ├── 01principles/     # 原则层（AI 可写）
+│   ├── 02playbooks/      # 应用层：标准化流程（AI 可写）
+│   ├── 02templates/      # 应用层：可复用模版（AI 可写）
+│   ├── 02cases/          # 应用层：具体案例（AI 可写）
+│   └── 03notes/          # 整理知识层（AI 可写）
 ├── 30_Resources/         # 参考资料
-│   ├── 00_Inbox/         # 待分类（可写）← inbox 命令写入这里
-│   └── Library/          # 已分类（可写）
+│   ├── Library/          # 资料库（可写）
+│   └── summary/          # 报告汇总（可写）
 ├── 40_Archives/          # 归档（可写）
+├── 50_Raw/               # 统一素材区
+│   ├── inbox/            # 待分类（可写）← inbox 命令写入这里
+│   └── merged/           # 合并后的素材（可写）
 └── .pkm/                 # 系统文件
     └── Skills/           # Skill 定义（只读）
 ```
@@ -376,9 +390,8 @@ echo "项目已完成" > 10_Projects/MyProject/COMPLETED.md
 | --- | --- | --- |
 | `addProject` | `_ProjectCreator.md` | 项目创建器 |
 | `inbox` | `_Inbox.md` | 快速捕获器 |
-| `classify` | `_Classifier.md` | 智能分类器 |
-| `synthesize` | `_Synthesizer.md` | 知识蒸馏器 |
-| `audit` | `_Auditor.md` | 质量审计员 |
+| `organize` | `_Organizer.md` | 智能组织器 |
+| `distill` | `_Distiller.md` | 知识提炼器 |
 | `archive` | `_Archiver.md` | 生命周期管理器 |
 | `verify` | `_Verifier.md` | 范围守卫 |
 

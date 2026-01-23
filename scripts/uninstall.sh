@@ -110,6 +110,7 @@ echo "  • 10_Projects/"
 echo "  • 20_Areas/"
 echo "  • 30_Resources/"
 echo "  • 40_Archives/"
+echo "  • 50_Raw/"
 echo ""
 read -p "删除这些目录？(y/n) " -n 1 -r
 echo ""
@@ -117,7 +118,7 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     echo ""
     echo -e "${RED}⚠${NC}  删除知识库目录..."
     # 只删除空目录，保护用户数据
-    find 10_Projects 20_Areas 30_Resources 40_Archives -type d -empty -delete 2>/dev/null || true
+    find 10_Projects 20_Areas 30_Resources 40_Archives 50_Raw -type d -empty -delete 2>/dev/null || true
     echo -e "   ${GREEN}✓${NC} 已删除空目录（保留有内容的目录）"
 else
     echo ""

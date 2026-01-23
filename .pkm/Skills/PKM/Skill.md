@@ -19,11 +19,10 @@ description: 基于 PARA+CODE 的智能知识管理系统，自动处理知识�
 
 我会自动判断当前需要执行的操作：
 
-- ✅ 检查知识库结构（Verifier）
-- 📥 如果 Inbox 有文件 → 自动分类（Classifier）
-- 📚 如果某主题积累 10+ 碎片 → 自动蒸馏（Synthesizer）
-- 🔍 如果有新草稿 → 自动审计（Auditor）
-- 📦 如果有项目标记完成 → 自动归档（Archiver）
+- ✅ 检查知识库结构（Verify）
+- 🗄️ 如果有项目标记完成 → 自动归档（Archive）
+- 📦 如果 50_Raw/ 有文件 → 自动组织分类（Organize）
+- 💎 如果 20_Areas/03notes/ 有新增/变动 → 自动提炼（Distill）
 
 ### 查看帮助
 
@@ -37,13 +36,24 @@ description: 基于 PARA+CODE 的智能知识管理系统，自动处理知识�
 
 ## 命令列表
 
-### 智能模式（推荐）
+### 一键整理知识
 
 ```text
 @pkm
 ```
+**一键全自动处理**，系统智能整理和提炼知识，无需人工干预。
 
-全自动模式，依次执行所有需要的操作。
+**自动顺序执行**（不推荐单独使用）：
+- `@pkm verify` - 自动检查知识库结构完整性
+- `@pkm archive` - 自动检测并归档已完成的项目
+- `@pkm organize` - 自动分类整理 `50_Raw/` 中的待处理内容
+- `@pkm distill` - 自动提炼 `20_Areas/03notes/` 中的知识
+
+**适用场景**：
+
+- ✅ 每天结束前执行一次，自动整理当天积累的知识
+- ✅ 项目完成后，自动归档并提取知识
+- ✅ 定期维护，保持知识库整洁有序
 
 ### 快速捕获
 
@@ -65,23 +75,21 @@ scope 值：
   - 可叠加：common,local 或 local,项目名
 ```
 
-### 手动指定操作
+### 任务管理
 
 ```text
-@pkm addProject            # 创建新项目目录（自动命名为 时间戳_XXX）
 @pkm todo <内容>           # 添加新任务
 @pkm todo update <id/name> # 更新任务进展
 @pkm todo ok <id/name>    # 完成任务
 @pkm todo del <id/name>   # 删除任务
 @pkm todo list            # 列出所有任务
-@pkm classify              # 分类 Inbox 中的内容
-@pkm synthesize            # 蒸馏所有达到阈值（10+）的主题
-@pkm synthesize <主题>     # 蒸馏指定主题（如：@pkm synthesize React）
-@pkm audit                 # 审计所有包含草稿的主题
-@pkm audit <主题>          # 审计指定主题（如：@pkm audit Python）
+```
+### 项目
+
+```text
+@pkm addProject [项目名称]  # 创建新项目目录（格式：YYYYMMDD_HHMMSS_<项目名称>，如果未提供名称则询问）
 @pkm archive               # 归档所有包含 COMPLETED.md 的项目
 @pkm archive <项目名>      # 归档指定项目（如：@pkm archive UserAuth）
-@pkm verify                # 仅验证知识库结构
 ```
 
 ### 帮助与信息
@@ -98,35 +106,30 @@ scope 值：
 
 调用 `_Verifier` 模块：
 
-- ✅ 检查知识库结构（5 个必需目录）
+- ✅ 检查知识库结构（6 个必需目录：10_Projects、20_Areas、30_Resources、40_Archives、50_Raw、.pkm）
 - ✅ 生成操作白名单
 - ❌ 验证失败则立即中止
 
-### 2. 智能路由
+### 2. 命令路由
 
-根据命令参数或自动检测，路由到相应模块：
+根据命令参数路由到相应模块：
 
-**智能模式（无参数）**：
+**一键整理知识（无参数）**：
+- 执行 `@pkm` 命令：执行主流程 `Verify → Archive → Organize → Distill`
+对应子命令：`@pkm verify`、`@pkm archive`、`@pkm organize`、`@pkm distill`
 
-1. 扫描 `30_Resources/00_Inbox/` → 如果有文件 → 调用 `_Classifier`
-2. 扫描 `20_Areas/AI_Synthesized/` → 如果有主题 ≥ 10 个文件 → 调用 `_Synthesizer`
-3. 扫描 `20_Areas/AI_Synthesized/` → 如果有 `[草稿]` 标记的文件 → 调用 `_Auditor`
-4. 扫描 `10_Projects/` → 如果有 `COMPLETED.md` → 调用 `_Archiver`
+**手动命令（带参数）**：
 
-**手动模式（带参数）**：
-
-- `inbox <内容>` → 先调用 `_Verifier`，再调用 `_Inbox`（快速捕获）
-- `inbox --online <内容>` → 先调用 `_Verifier`，再调用 `_Inbox`（在线模式）
-- `advice <问题>` → 先调用 `_Verifier`，再调用 `_Advisor`（默认模式：common + local）
-- `advice --scope <范围> <问题>` → 先调用 `_Verifier`，再调用 `_Advisor`（指定范围）
-- `classify` → 先调用 `_Verifier`，再调用 `_Classifier`
-- `synthesize` → 先调用 `_Verifier`，再调用 `_Synthesizer`（蒸馏所有达到阈值的主题）
-- `synthesize <主题>` → 先调用 `_Verifier`，再调用 `_Synthesizer`（蒸馏指定主题）
-- `audit` → 先调用 `_Verifier`，再调用 `_Auditor`（审计所有草稿）
-- `audit <主题>` → 先调用 `_Verifier`，再调用 `_Auditor`（审计指定主题）
-- `archive` → 先调用 `_Verifier`，再调用 `_Archiver`（归档所有已完成项目）
-- `archive <项目名>` → 先调用 `_Verifier`，再调用 `_Archiver`（归档指定项目）
-- `verify` → 仅调用 `_Verifier`
+- `inbox <内容>` → `_Verifier` → `_Inbox`（快速捕获）
+- `inbox --online <内容>` → `_Verifier` → `_Inbox`（在线模式）
+- `advice <问题>` → `_Verifier` → `_Advisor`（默认模式：common + local）
+- `advice --scope <范围> <问题>` → `_Verifier` → `_Advisor`（指定范围）
+- `todo <操作>` → `_Verifier` → `_TodoManager`（任务管理）
+- `addProject [项目名称]` → `_Verifier` → `_ProjectCreator`（创建项目）
+- `organize` → `_Verifier` → `_Organizer`（组织分类）
+- `distill` → `_Verifier` → `_Distiller`（提炼知识）
+- `archive [项目名]` → `_Verifier` → `_Archiver`（归档项目）
+- `verify` → `_Verifier`（仅验证）
 - `help` → 显示帮助信息
 
 ### 3. 执行与报告
@@ -137,7 +140,18 @@ scope 值：
 
 ## 内部模块说明
 
-PKM 由 7 个内部模块组成，每个模块负责知识管理的一个环节：
+PKM 由 8 个内部模块组成，每个模块负责知识管理的一个环节：
+
+| 模块 | 职责 | 对应阶段 | 触发方式 |
+|------|------|---------|---------|
+| `_Verifier` | 范围守卫，验证结构 | 前置检查 | 自动（每次操作前） |
+| `_Inbox` | 快速捕获器 | Capture | `@pkm inbox` |
+| `_Advisor` | 智能顾问 | Express | `@pkm advice` |
+| `_Organizer` | 智能组织器 | Organize | `@pkm organize` 或自动 |
+| `_Distiller` | 知识提炼器 | Distill | `@pkm distill` 或自动 |
+| `_Archiver` | 生命周期管理器 | Express | `@pkm archive` 或自动 |
+| `_ProjectCreator` | 项目创建器 | 支撑 | `@pkm addProject` |
+| `_TodoManager` | 任务管理器 | 支撑 | `@pkm todo` |
 
 ### 📋 _Verifier（范围守卫）
 
@@ -163,11 +177,11 @@ PKM 由 7 个内部模块组成，每个模块负责知识管理的一个环节�
 **前置要求**：
 
 - ⚠️ 必须先调用 `_Verifier` 验证环境
-- 确认 `30_Resources/00_Inbox/` 存在且可写
+- 确认 `50_Raw/inbox/` 存在且可写
 
 **核心功能**：
 
-- 快速保存文本、想法、链接到 `30_Resources/00_Inbox/`
+- 快速保存文本、想法、链接到 `50_Raw/inbox/`
 - AI生成文件名（简单总结内容，5-10字标题）
 - 智能处理链接（默认仅引用，`--online` 模式抓取内容）
 - 保持内容原生（最小化处理，保留原始格式）
@@ -210,7 +224,7 @@ PKM 由 7 个内部模块组成，每个模块负责知识管理的一个环节�
 
 - **智能检索**：
   - 关键词匹配（文件名、路径）
-  - 优先级排序（Manual > Projects > Archives）
+  - 优先级排序（manual/ > principles > playbooks/templates/cases > notes > Projects > Archives）
   - 内容摘要提取
 
 - **应用场景**：
@@ -223,71 +237,59 @@ PKM 由 7 个内部模块组成，每个模块负责知识管理的一个环节�
 
 ---
 
-### 📋 _Classifier（智能分流器）
+### 📦 _Organizer（智能组织器）
 
-**职责**：处理 Inbox 中的未分类内容，分流到 PARA 体系
+**职责**：处理 `50_Raw/` 中的未分类内容，合并同类内容，分类归位到 PARA 体系
 
-**对应阶段**：CODE 的 **Capture** → **Organize**
+**对应阶段**：CODE 的 **Organize**
 
 **触发**：
 
-- 智能模式：Inbox 有文件时
-- 手动调用：`@pkm classify`
+- 智能模式：`50_Raw/` 有文件时
+- 手动调用：`@pkm organize`
 
 **核心功能**：
 
-- 扫描 `30_Resources/00_Inbox/`
+- 扫描 `50_Raw/`（包含 `inbox/` 和其他待分类素材）
+- 按主题/类型合并同类内容到 `50_Raw/merged/`
 - 判断类型：可执行任务 / 知识片段 / 参考资料
-- 自动分流到 `10_Projects/*/AI_Generated/` 或 `20_Areas/AI_Synthesized/` 或 `30_Resources/Library/`
-- 智能归并：避免主题过度分散
-- 支持二级分类：如 `Cluster_React/Hooks_useEffect.md`
+- 分类归位：
+  - 任务 → `10_Projects/`（直接放在项目目录下）
+  - 知识 → `20_Areas/03notes/<领域>/`（先放在 notes 层）
+  - 资料 → `30_Resources/Library/`
+- 整理完清空 `50_Raw/`
 
-**详细文档**：`_Classifier.md`
-
----
-
-### 🧪 _Synthesizer（知识蒸馏器）
-
-**职责**：整合 AI_Synthesized 中的碎片知识，生成结构化草稿
-
-**对应阶段**：CODE 的 **Organize** → **Distill**
-
-**触发**：
-
-- 智能模式：某主题积累 10+ 条原子块时
-- 手动调用：`@pkm synthesize` → 蒸馏所有达到阈值（10+）的主题
-- 手动调用：`@pkm synthesize <主题>` → 蒸馏指定主题
-
-**核心功能**：
-
-- 扫描主题目录（如 `20_Areas/AI_Synthesized/Cluster_React/`）
-- 去重、归并、逻辑排序
-- 生成结构化草稿，标记为 `[草稿]_主题名.md`
-
-**详细文档**：`_Synthesizer.md`
+**详细文档**：`_Organizer.md`
 
 ---
 
-### 🔍 _Auditor（质量审计员）
+### 💎 _Distiller（知识提炼器）
 
-**职责**：对比 AI 草稿与 Manual 知识，生成更新建议清单
+**职责**：将 `20_Areas/03notes/` 中的零散知识按金字塔原理提炼成结构化知识
 
-**对应阶段**：CODE 的 **Distill**（质量审计）
+**对应阶段**：CODE 的 **Distill**
 
 **触发**：
 
-- 智能模式：Synthesizer 生成草稿后自动触发
-- 手动调用：`@pkm audit` → 审计所有包含草稿的主题
-- 手动调用：`@pkm audit <主题>` → 审计指定主题
+- 智能模式：`20_Areas/03notes/` 有新增/变动时
+- 手动调用：`@pkm distill`
 
 **核心功能**：
 
-- 读取 AI 草稿（`[草稿]_*.md`）
-- 对比 `20_Areas/Manual/` 中的现有知识
-- 识别新增/过时/冗余内容
-- 生成更新建议清单（`主题_更新建议_日期.md`）
+- 扫描 `20_Areas/03notes/` 各领域目录
+- 与已有知识深度整合（去重、交叉引用、结构化）
+- 按金字塔原理提炼：
+  - 零散知识（notes）+ areas 区的 manual 区（只读）→ 整理知识（notes 内按领域分类）
+  - 整理知识 → 应用知识（playbooks/templates/cases）
+  - 应用知识 → 原则知识（principles）
+- 沉淀到对应目录：
+  - `20_Areas/03notes/<领域>/` → 整理后的知识
+  - `20_Areas/02playbooks/`、`02templates/`、`02cases/` → 应用层知识
+  - `20_Areas/01principles/` → 原则层知识
+- 系统性检查：一致性、过时性、冗余、逻辑合理性
+- 生成报告到 `30_Resources/summary/`
 
-**详细文档**：`_Auditor.md`
+**详细文档**：`_Distiller.md`
 
 ---
 
@@ -308,7 +310,7 @@ PKM 由 7 个内部模块组成，每个模块负责知识管理的一个环节�
 - 识别已完成的项目（存在 `COMPLETED.md` 或手动指定）
 - 移动整个项目到 `40_Archives/`
 - 提取可复用知识（架构决策、经验教训）
-- 回流到 `20_Areas/AI_Synthesized/`
+- 回流到 `50_Raw/`（等待后续 Organize 和 Distill 处理）
 
 **详细文档**：`_Archiver.md`
 
@@ -324,31 +326,33 @@ PKM 由 7 个内部模块组成，每个模块负责知识管理的一个环节�
 
 # 输出示例：
 ✅ Verifier 验证通过
-📥 检测到 Inbox 有 8 个文件
-🔄 执行 Classifier...
+
+🗄️ 检测到 1 个项目已完成
+🔄 执行 Archiver...
+  └─ 归档到 40_Archives/，知识回流到 50_Raw/ ✅
+
+📦 检测到 50_Raw/ 有 8 个文件
+🔄 执行 Organizer...
+  ├─ 合并同类内容到 50_Raw/merged/
   ├─ 任务 → Projects: 3 个
-  ├─ 知识 → Areas: 5 个
-  └─ Inbox 已清空 ✅
+  ├─ 知识 → Areas/03notes: 5 个
+  └─ 50_Raw/ 已清空 ✅
 
-📊 检测到 Cluster_React 有 12 个文件（达到蒸馏阈值）
-🔄 执行 Synthesizer...
-  └─ 生成草稿：[草稿]_React_Hooks知识总结.md ✅
+💎 检测到 20_Areas/03notes/01_react/ 有新增
+🔄 执行 Distiller...
+  ├─ 整理知识 → 20_Areas/03notes/01_react/
+  ├─ 应用知识 → 20_Areas/02playbooks/React_Hooks_使用流程.md
+  └─ 报告 → 30_Resources/summary/20260113_103000_知识提炼报告_Distill.md ✅
 
-📋 检测到 1 个新草稿
-🔄 执行 Auditor...
-  └─ 生成更新建议：React_更新建议_20260113.md ✅
-
-🎉 完成！请查看：
-  - AI_Synthesized/Cluster_React/[草稿]_React_Hooks知识总结.md
-  - AI_Synthesized/Audit_Reports/React_更新建议_20260113.md
+🎉 完成！主流程执行完毕。
 ```
 
 ---
 
-### 场景 2：只分类 Inbox
+### 场景 2：只组织分类 50_Raw/
 
 ```text
-@pkm classify
+@pkm organize
 
 # 输出示例：
 ✅ Verifier 验证通过
@@ -357,41 +361,42 @@ PKM 由 7 个内部模块组成，每个模块负责知识管理的一个环节�
 ## 分流统计
 
 ### 可执行任务 → Projects：3 个
-- 实现用户登录功能.md → 10_Projects/UserAuth/AI_Generated/
-- 修复支付Bug.md → 10_Projects/Payment/AI_Generated/
+- 实现用户登录功能.md → 10_Projects/UserAuth/
+- 修复支付Bug.md → 10_Projects/Payment/
 
-### 知识片段 → Areas/AI_Synthesized：5 个
-- React_useEffect.md → 20_Areas/AI_Synthesized/Cluster_React/Hooks_useEffect.md
-- Python_装饰器.md → 20_Areas/AI_Synthesized/Cluster_Python/高级特性_装饰器.md
+### 知识片段 → Areas/03notes：5 个
+- React_useEffect.md → 20_Areas/03notes/01_react/
+- Python_装饰器.md → 20_Areas/03notes/01_python/
 
-✅ Inbox 已清空！
+✅ 50_Raw/ 已清空！
 ```
 
 ---
 
-### 场景 3：蒸馏特定主题
+### 场景 3：提炼特定主题
 
 ```text
-@pkm synthesize React
+@pkm distill React
 
 # 输出示例：
 ✅ Verifier 验证通过
-📚 扫描主题：Cluster_React
-  ├─ 找到 15 个原子块
+💎 扫描主题：React
+  ├─ 找到 15 个知识片段（20_Areas/03notes/01_react/）
   ├─ 去重后：12 个独特知识点
-  └─ 生成草稿：[草稿]_React_Hooks知识总结.md
+  ├─ 整合 manual/ 区内容（只读参考）
+  └─ 生成提炼报告：30_Resources/summary/20260113_103000_React知识提炼_Distill.md
 
-## 草稿目录
+## 提炼结果
 
-1. 概念：React Hooks 是什么
-2. 基本用法
+1. 概念：React Hooks 是什么 → 已整理到 20_Areas/03notes/01_react/
+2. 基本用法 → 已提炼到 20_Areas/02playbooks/React_Hooks_使用流程.md
    - useState
    - useEffect
-3. 进阶技巧
-4. 常见问题
-5. 最佳实践
+3. 进阶技巧 → 已提炼到 20_Areas/02templates/React_Hooks_高级模式.md
+4. 常见问题 → 已提炼到 20_Areas/02cases/React_Hooks_常见问题案例.md
+5. 最佳实践 → 已提炼到 20_Areas/01principles/React_Hooks_最佳实践.md
 
-📋 建议：执行 @pkm audit React 查看更新建议
+✅ 提炼完成！知识已按金字塔原理沉淀到对应层级。
 ```
 
 ---
@@ -408,7 +413,7 @@ PKM 由 7 个内部模块组成，每个模块负责知识管理的一个环节�
 
 ## 📋 命令列表
 
-### 智能模式（推荐）
+### 一键整理知识（推荐）
   @pkm                       全自动模式，依次执行所有需要的操作
 
 ### 快速捕获
@@ -416,11 +421,9 @@ PKM 由 7 个内部模块组成，每个模块负责知识管理的一个环节�
   @pkm inbox --online <内容>        在线模式（抓取并整理链接内容）
 
 ### 手动模式
-  @pkm classify              分类 Inbox 中的内容
-  @pkm synthesize            蒸馏所有达到阈值（10+）的主题
-  @pkm synthesize <主题>     蒸馏指定主题（如：React）
-  @pkm audit                 审计所有包含草稿的主题
-  @pkm audit <主题>          审计指定主题（如：Python）
+  @pkm organize              组织分类 50_Raw/ 中的内容
+  @pkm distill              提炼 20_Areas/03notes/ 中的知识
+  @pkm distill <主题>       提炼指定主题（如：React）
   @pkm archive               归档所有包含 COMPLETED.md 的项目
   @pkm archive <项目名>      归档指定项目（如：UserAuth）
   @pkm verify                仅验证知识库结构
@@ -431,8 +434,8 @@ PKM 由 7 个内部模块组成，每个模块负责知识管理的一个环节�
 ## 🚀 快速开始
 
 1. 初始化知识库：
-   mkdir -p 10_Projects 20_Areas/{Manual,AI_Synthesized} \
-            30_Resources/{00_Inbox,Library} 40_Archives .pkm/Skills
+   mkdir -p 10_Projects 20_Areas/{manual,01principles,02playbooks,02templates,02cases,03notes} \
+            30_Resources/{Library,summary} 40_Archives 50_Raw/{inbox,merged} .pkm/Skills
 
 2. 开始使用：
    @pkm                       # 自动处理所有任务
@@ -445,16 +448,17 @@ PKM 由 7 个内部模块组成，每个模块负责知识管理的一个环节�
 
 ## 💡 工作流程
 
-Capture（捕获）→ Organize（组织）→ Distill（蒸馏）→ Express（表达）
+Capture（捕获）→ Organize（组织）→ Distill（提炼）→ Express（表达）
    ↓              ↓               ↓              ↓
- _Inbox      _Classifier     _Synthesizer    _Archiver
-                           → _Auditor
+ _Inbox      _Organizer      _Distiller      _Archiver
+
+主流程：Verify → Archive → Organize → Distill
 
 ## 🛡️ 安全机制
 
-✅ 双重防火墙：AI 区 vs Manual 区，知识库内 vs 外
+✅ 双重防火墙：受保护区 vs AI 可写区，知识库内 vs 外
 ✅ 白名单强制：所有操作限制在白名单内
-✅ 只读 Manual：AI 永远不直接修改 Manual 区
+✅ 只读 manual/：AI 永远不直接修改 manual/ 区（受保护区）
 ```
 
 ---
@@ -463,10 +467,10 @@ Capture（捕获）→ Organize（组织）→ Distill（蒸馏）→ Express（
 
 ### 双重防火墙
 
-1. **内部防火墙**：AI 区 vs Manual 区
+1. **内部防火墙**：受保护区 vs AI 可写区
 
-   - AI 可以自由修改 `AI_Synthesized/`, `AI_Generated/`
-   - AI **只读** `Manual/`，绝不直接修改
+   - AI 可以自由修改 `20_Areas/03notes/`、`02playbooks/`、`02templates/`、`02cases/`、`01principles/`、`10_Projects/*/`（排除 manual/）
+   - AI **只读** `20_Areas/manual/` 和 `10_Projects/*/manual/`，绝不直接修改
 
 2. **外部防火墙**：知识库内 vs 知识库外
 
@@ -477,16 +481,20 @@ Capture（捕获）→ Organize（组织）→ Distill（蒸馏）→ Express（
 
 **可写区域**（AI 可以创建/修改/删除文件）：
 
-- `10_Projects/*/AI_Generated/`
-- `20_Areas/AI_Synthesized/`
-- `30_Resources/00_Inbox/`
+- `50_Raw/`
+- `10_Projects/*/`（排除 manual/）
+- `20_Areas/03notes/`
+- `20_Areas/02playbooks/`
+- `20_Areas/02templates/`
+- `20_Areas/02cases/`
+- `20_Areas/01principles/`
 - `30_Resources/Library/`
 - `40_Archives/`
 
 **只读区域**（AI 只能读取，不能修改）：
 
-- `20_Areas/Manual/`
-- `10_Projects/*/Manual/`
+- `20_Areas/manual/`
+- `10_Projects/*/manual/`
 - `.pkm/`
 
 **禁止区域**（绝对不能操作）：
@@ -514,16 +522,17 @@ Capture（捕获）→ Organize（组织）→ Distill（蒸馏）→ Express（
 **解决**：
 
 ```bash
-mkdir -p 10_Projects 20_Areas/{Manual,AI_Synthesized} 30_Resources/{00_Inbox,Library} 40_Archives .pkm/Skills
+mkdir -p 10_Projects 20_Areas/{manual,01principles,02playbooks,02templates,02cases,03notes} \
+         30_Resources/{Library,summary} 40_Archives 50_Raw/{inbox,merged} .pkm/Skills
 ```
 
 ### 问题：文件被标记为"待确认"
 
-**原因**：Classifier 无法判断文件类型。
+**原因**：Organizer 无法判断文件类型。
 
 **解决**：
 
-1. 查看 `20_Areas/AI_Synthesized/Unsorted/[待确认]_文件名.md`
+1. 查看 `20_Areas/03notes/00_未分类/[待确认]_文件名.md`
 2. 人工判断类型，手动移动到正确位置
 
 ### 问题：草稿质量差
@@ -532,29 +541,22 @@ mkdir -p 10_Projects 20_Areas/{Manual,AI_Synthesized} 30_Resources/{00_Inbox,Lib
 
 **解决**：
 
-1. 忽略草稿，直接手动编写 Manual
-2. 或重新收集高质量的原子块
+1. 直接手动编写到 `20_Areas/manual/`（受保护区）
+2. 或重新收集高质量的知识片段到 `50_Raw/inbox/`
 
 ---
 
 ## 高级配置
 
-### 自定义蒸馏阈值
+### 手动执行单个步骤
 
-默认：某主题积累 10+ 个文件时触发蒸馏。
-
-如果你希望调整阈值，可以在调用时指定：
+如果只想执行部分操作，可以手动调用：
 
 ```text
-@pkm synthesize React --threshold 20
-```
-
-### 跳过某些模块
-
-如果只想执行部分操作：
-
-```text
-@pkm --skip-synthesizer --skip-auditor
+@pkm organize   # 只执行组织分类（处理 50_Raw/）
+@pkm distill    # 只执行提炼（处理 20_Areas/03notes/）
+@pkm archive    # 只执行归档（处理已完成项目）
+@pkm verify     # 只验证知识库结构
 ```
 
 ---
