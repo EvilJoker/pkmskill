@@ -286,7 +286,7 @@ flowchart LR
 
 **常用操作**：
 - `@pkm todo add <内容>` 或 `@pkm todo add`：新增任务（可交互补全：想法、四象限、计划、实现思路、关联项目）。
-- `@pkm todo list`：按四象限列出任务，支持筛选。
+- `@pkm todo list`：按四象限列出任务，支持筛选；并做进展核查与延期风险提示，提醒及时处理。
 - `@pkm todo update <id/名称>`：更新进展（会记录日期和一句话进展）。
 - `@pkm todo ok <id/名称>`：标记完成（会问总结、收益、价值评分，并归档到 todo_archive.md）。
 - `@pkm todo del <id/名称>`：删除任务。
@@ -321,7 +321,7 @@ flowchart TB
 | 做一次完整整理 | `@pkm` | 顺序执行 Verify → Archive → Organize → Distill |
 | 基于知识库问答 | `@pkm advice <问题> [--scope common\|local\|项目名]` | 不写 scope 时用 common+local |
 | 加一条待办 | `@pkm todo add [内容]` 或 `@pkm todo add` | 可交互补全四象限、计划等 |
-| 看所有待办 | `@pkm todo list` | 按四象限展示，可筛选 |
+| 看所有待办 | `@pkm todo list` | 按四象限展示、可筛选；含进展核查与延期风险提示 |
 | 更新/完成/删任务 | `@pkm todo update/ok/del <id或名称>` | ok 会写总结并归档 |
 | 建新项目目录 | `@pkm addProject` | 在 10_Projects 下生成时间戳_XXX 目录 |
 | 查看帮助 | `@pkm help` | 显示命令与用法 |

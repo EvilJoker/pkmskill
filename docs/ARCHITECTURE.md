@@ -185,7 +185,7 @@
 
 **操作**：
 - `@pkm todo add <内容>`：添加新任务（可选[add]，交互式补全信息：想法、4象限、计划、实现思路、关联项目）
-- `@pkm todo list`：列出所有任务（按 4 象限分组显示，支持筛选）
+- `@pkm todo list`：列出所有任务（按 4 象限分组显示，支持筛选）；并做进展核查与延期风险提示，提醒用户及时处理
 - `@pkm todo update <id/name>`：更新任务进展（记录日期 + 一句话进展）
 - `@pkm todo ok <id/name>`：完成任务（追问总结：内容、收益、价值评分，归档到 todo_archive.md）
 - `@pkm todo del <id/name>`：删除任务
