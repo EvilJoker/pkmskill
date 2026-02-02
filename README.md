@@ -56,6 +56,7 @@ PKM Skill 是一个智能知识管理工具包，通过 AI 自动化处理知识
 - 📋 **任务管理**：`@pkm todo` 管理待办任务，支持4象限管理方法
 - 🏗️ **项目创建**：`@pkm addProject` 快速创建项目目录
 - 🤖 **智能自动化**：自动分类、蒸馏落地、归档
+- 🔌 **Organizer 插件**：可选按内容类型用模版预处理（如故障总结、会议纪要），再分类归位
 - 🔒 **安全防护**：严格的范围守卫，保护人工知识区域
 - 🔄 **CODE 闭环**：完整的 Capture → Organize → Distill → Express 流程
 - 📦 **即装即用**：一行命令安装到任何项目
@@ -139,7 +140,7 @@ bash /path/to/pkmskill/scripts/install.sh
 执行流程：
 1. ✅ 验证知识库结构（Verify）
 2. 🗄️ 如果有项目标记完成 → 自动归档（Archive）
-3. 📦 如果 50_Raw/ 有文件 → 自动组织分类（Organize）
+3. 📦 如果 50_Raw/ 有文件 → 自动组织分类（Organize，含可选插件预处理：故障总结、会议纪要等模版）
 4. 💎 如果 20_Areas/03notes/ 有新增/变动 → 自动提炼（Distill）
 ```
 
@@ -192,7 +193,11 @@ your-knowledge-base/
 │   │       ├── _Verifier.md     # 范围守卫
 │   │       ├── _Organizer.md     # 智能组织器
 │   │       ├── _Distiller.md     # 知识提炼器
-│   │       └── _Archiver.md     # 生命周期管理
+│   │       ├── _Archiver.md      # 生命周期管理
+│   │       └── plugin/           # Organizer 插件（可选）：按内容类型用模版预处理
+│   │           ├── Skill.md      # 插件注册表
+│   │           ├── template_summary_problem.md   # 故障/问题总结模版
+│   │           └── template_meeting_minutes.md    # 会议纪要模版
 │   └── cursor-commands/
 │       └── pkm.md               # Cursor Commands 定义
 ├── .cursor/

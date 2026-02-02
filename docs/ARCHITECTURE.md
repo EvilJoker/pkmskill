@@ -135,6 +135,7 @@
 
 #### Organize（组织分类）
 - 扫描 `50_Raw/`（包含 `inbox/` 和其他待分类素材）
+- **可选插件预处理**：若存在 `.pkm/Skills/PKM/plugin/Skill.md`，先按内容类型匹配插件（如故障总结、会议纪要），命中则用对应 `template_<类型>.md` 模版整理内容，再继续后续步骤
 - 按主题/类型合并同类内容到 `50_Raw/merged/`
 - 判断类型（任务/知识/资料）和主题
 - 分类归位：
@@ -216,15 +217,20 @@ Skill 文件按照工作流设计组织，每个文件对应一个明确的职�
 ├── 【提炼流程（主流程）】
 │   ├── _Verifier.md      # Verify：前置安全检查（目录结构、操作范围、写权限白名单）
 │   ├── _Archiver.md      # Archive：归档已完成项目，提取可复用知识到 50_Raw/
-│   ├── _Organizer.md     # Organize：合并同类内容到 50_Raw/merged/，分类归位，清空 50_Raw/
+│   ├── _Organizer.md     # Organize：合并同类内容到 50_Raw/merged/，分类归位，清空 50_Raw/（含可选插件预处理）
 │   └── _Distiller.md     # Distill：深度整合、金字塔提炼、系统性检查，生成报告
 │
 ├── 【Express 流程】
 │   └── _Advisor.md       # 基于知识库回答问题，支持 scope 参数
 │
-└── 【扩展功能】
-    ├── _ProjectCreator.md  # 创建新项目目录（时间戳_XXX）
-    └── _TodoManager.md     # 管理待办任务，支持4象限管理
+├── 【扩展功能】
+│   ├── _ProjectCreator.md  # 创建新项目目录（时间戳_XXX）
+│   └── _TodoManager.md     # 管理待办任务，支持4象限管理
+│
+└── plugin/                 # Organizer 插件：按内容类型用模版预处理 50_Raw 条目（可选）
+    ├── Skill.md             # 插件注册表：插件名、匹配条件、模版文件
+    ├── template_summary_problem.md   # 故障/问题总结模版
+    └── template_meeting_minutes.md   # 会议纪要模版
 ```
 
 ### 4.2 Skill 文件职责
@@ -235,7 +241,7 @@ Skill 文件按照工作流设计组织，每个文件对应一个明确的职�
 | `_Inbox.md` | 捕获流程 | `@pkm inbox` | 快速捕获碎片化信息，生成原子笔记到 `50_Raw/inbox/`（格式：`YYYYMMDD_HHMMSS_标题_inbox.md`） |
 | `_Verifier.md` | 提炼流程-Verify | 自动（任何操作前） | 检查 6 个顶级目录（10_Projects/、20_Areas/、30_Resources/、40_Archives/、50_Raw/、.pkm/）是否存在且结构完整；确认操作范围白名单；生成写权限白名单（manual/ 只读）；验证失败则立即中止 |
 | `_Archiver.md` | 提炼流程-Archive | `@pkm` 主流程 | 扫描 `10_Projects/` 识别已完成项目（存在 `COMPLETED.md` 标记）；将项目整体移至 `40_Archives/<YYYY>/` 保留完整目录结构；从项目提取可复用知识（架构模式、解决方案、经验总结、资料等）包括 manual 区，放置到 `50_Raw/` |
-| `_Organizer.md` | 提炼流程-Organize | `@pkm` 主流程 | 扫描 `50_Raw/`（包含 `inbox/` 和其他待分类素材）；按主题/类型合并同类内容到 `50_Raw/merged/`；判断类型（任务/知识/资料）和主题；分类归位：任务→`10_Projects/`，知识→`20_Areas/03notes/<领域>/`，资料→`30_Resources/Library/`；整理完清空 `50_Raw/` |
+| `_Organizer.md` | 提炼流程-Organize | `@pkm` 主流程 | 扫描 `50_Raw/`（包含 `inbox/` 和其他待分类素材）；**可选插件预处理**：若存在 `plugin/Skill.md`，先按内容类型匹配插件（如故障、会议纪要），命中则用对应 `template_<类型>.md` 模版整理内容；按主题/类型合并同类内容到 `50_Raw/merged/`；判断类型（任务/知识/资料）和主题；分类归位：任务→`10_Projects/`，知识→`20_Areas/03notes/<领域>/`，资料→`30_Resources/Library/`；整理完清空 `50_Raw/` |
 | `_Distiller.md` | 提炼流程-Distill | `@pkm` 主流程 | 扫描各层新增/变动素材（只关注 `20_Areas/03notes/`）；与已有知识深度整合（去重、交叉引用、结构化）；按金字塔原理提炼：零散知识（notes）+ areas 区的 manual 区 → 整理知识 → 应用知识（playbooks/templates/cases）→ 原则知识（principles）；沉淀到对应目录；系统性检查（一致性、过时性、冗余、逻辑合理性）；生成报告到 `30_Resources/summary/`（格式：`YYYYMMDD_HHMMSS_标题_Distill.md`） |
 | `_Advisor.md` | Express 流程 | `@pkm advice` | 根据 scope 参数确定检索范围（common/local/项目名）；检索对应的知识库内容；结合 AI 通用知识回答问题；提供分类建议 |
 | `_ProjectCreator.md` | 扩展功能 | `@pkm addProject` | 自动生成项目目录名：`YYYYMMDD_HHMMSS_XXX`（时间戳在前，固定后缀 XXX）；在 `10_Projects/` 下创建目录；初始化项目模版结构（manual/） |
@@ -251,6 +257,15 @@ Skill 文件按照工作流设计组织，每个文件对应一个明确的职�
 - **流程对应**：Skill 文件组织与工作流设计一一对应（捕获流程、提炼流程、Express 流程、扩展功能），便于理解和维护
 - **渐进提炼**：`_Distiller.md` 模块体现金字塔原理，实现从零散知识（notes）→ 整理知识 → 应用知识（playbooks/templates/cases）→ 原则知识（principles）的渐进式提炼
 - **信任 AI**：默认允许 AI 自动落地，符合设计原则中的"信任为主"，人工负责后期纠偏
+
+### 4.4 Organizer 插件（plugin，可选）
+
+在 Organize 阶段，若存在 `.pkm/Skills/PKM/plugin/` 目录，则在对 50_Raw 中每个文件做类型判断之前，先按**内容类型**用**自定义模版**做一次结构化整理。
+
+- **plugin/Skill.md**：插件注册表，列出插件名、匹配条件（内容特征）、模版文件名。
+- **模版文件**：命名格式 `template_<内容类型>.md`，定义该类型的字段与格式，供 AI 从原文抽取并填充。
+- **内置模版**：`template_summary_problem.md`（故障/问题总结）、`template_meeting_minutes.md`（会议纪要）。用户可在 `plugin/Skill.md` 中注册更多模版并新增对应 `template_*.md` 文件。
+- **执行顺序**：扫描 50_Raw → 插件预处理（匹配则按模版整理）→ 合并同类 → 类型判断与分类归位。
 
 
 ## 六、 COMMAND 设计
