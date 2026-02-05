@@ -38,7 +38,7 @@
 
 **自动顺序执行**（不推荐单独使用）：
 - `@pkm verify` - 自动检查知识库结构完整性
-- `@pkm archive` - 自动检测并归档已完成的项目
+- `@pkm archive` - 自动检测并归档已完成的项目（基于 `COMPLETED.md`，回流知识到 `50_Raw/` 并搬运到 `40_Archives/`）
 - `@pkm organize` - 自动分类整理 `50_Raw/` 中的待处理内容
 - `@pkm distill` - 自动提炼 `20_Areas/03notes/` 中的知识
 
@@ -126,8 +126,8 @@
 
 ```text
 @pkm addProject [项目名称]  # 创建新项目目录（格式：YYYYMMDD_HHMMSS_<项目名称>，如果未提供名称则询问）
-@pkm archive               # 归档所有包含 COMPLETED.md 的项目
-@pkm archive <项目名>      # 归档指定项目（如：@pkm archive UserAuth）
+@pkm archive               # 扫描所有项目，基于已存在的 COMPLETED.md 回流知识到 50_Raw 并搬运到 40_Archives/
+@pkm archive <项目名>      # 仅为指定项目生成/更新 COMPLETED.md（如：@pkm archive UserAuth），不执行搬运
 ```
 
 ### 帮助与信息
@@ -459,7 +459,7 @@ mkdir -p 10_Projects 20_Areas/{manual,01principles,02playbooks,02templates,02cas
 @pkm organize   # 只执行组织分类（处理 50_Raw/）
 @pkm distill    # 只执行提炼（处理 20_Areas/03notes/）
 @pkm distill <主题>  # 提炼指定主题（如：@pkm distill React）
-@pkm archive    # 只执行归档（处理已完成项目）
+@pkm archive    # 只执行归档（模式 B：处理所有已完成项目，知识回流到 50_Raw 并搬运到 40_Archives/）
 @pkm verify     # 只验证知识库结构
 ```
 

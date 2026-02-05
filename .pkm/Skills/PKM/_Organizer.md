@@ -202,9 +202,7 @@
 操作步骤：
 
 1. 检查是否存在相关项目（通过关键词匹配）
-2. 如果不存在，创建新项目目录（使用 `_ProjectCreator` 或手动创建）
-3. 移动文件到项目根目录（直接放在项目目录下，不再使用 `AI_Generated/`）
-4. 在文件顶部添加元数据（created, source, type, project）
+2. 在文件顶部添加元数据（created, source, type, project）
 
 ---
 

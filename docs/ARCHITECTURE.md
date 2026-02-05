@@ -130,8 +130,8 @@
 
 #### Archive（归档回流）
 - 扫描 `10_Projects/` 识别已完成项目（存在 `COMPLETED.md` 标记）
-- 将项目整体移至 `40_Archives/<YYYY>/` 保留完整目录结构
-- 从项目 提取可复用知识（架构模式、解决方案、经验总结、资料等）包括manual区，放置到 `50_Raw/`
+- 将项目整体移至 `40_Archives/` 保留完整目录结构（目录名仍为 `YYYYMMDD_HHMMSS_XXX`）
+- 基于 `COMPLETED.md` 从项目（含 manual 区只读内容）提取可复用知识与资料，统一放置到 `50_Raw/`
 
 #### Organize（组织分类）
 - 扫描 `50_Raw/`（包含 `inbox/` 和其他待分类素材）

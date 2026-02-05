@@ -154,7 +154,7 @@ bash /path/to/pkmskill/scripts/install.sh
 | ---- | ---- | ---- |
 | `@pkm organize` | 组织分类 50_Raw/ 中的内容 | `@pkm` 会自动执行，无需单独调用 |
 | `@pkm distill` | 提炼 20_Areas/03notes/ 中的知识 | `@pkm` 会自动执行，如需手动调用可执行此命令 |
-| `@pkm archive` | 归档项目 | `@pkm` 会自动执行，无需单独调用 |
+| `@pkm archive` | 归档已完成项目（基于 `COMPLETED.md`，回流知识到 `50_Raw/` 并搬运到 `40_Archives/`） | `@pkm` 会自动执行，一般无需单独调用 |
 
 #### 任务管理功能
 
@@ -307,7 +307,7 @@ curl -fsSL https://raw.githubusercontent.com/EvilJoker/pkmskill/main/scripts/uni
 
 ```text
 @pkm addProject [项目名称]  # 创建新项目（如果未提供名称则询问）
-@pkm archive 归档项目，提取可复用知识回流到 Areas
+@pkm archive 归档已完成项目，提取可复用知识回流到 50_Raw（由后续 Organize/Distill 流入 Areas）
 ```
 
 ### 遇到问题：智能咨询

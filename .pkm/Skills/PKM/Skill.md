@@ -45,7 +45,7 @@ description: 基于 PARA+CODE 的智能知识管理系统，自动处理知识�
 
 **自动顺序执行**（不推荐单独使用）：
 - `@pkm verify` - 自动检查知识库结构完整性
-- `@pkm archive` - 自动检测并归档已完成的项目
+- `@pkm archive` - 自动以“模式 B”（无参数 `@pkm archive`）检测并归档已完成的项目（基于 `COMPLETED.md`，回流知识到 `50_Raw/` 并搬运到 `40_Archives/`）
 - `@pkm organize` - 自动分类整理 `50_Raw/` 中的待处理内容
 - `@pkm distill` - 自动提炼 `20_Areas/03notes/` 中的知识
 
@@ -88,8 +88,8 @@ scope 值：
 
 ```text
 @pkm addProject [项目名称]  # 创建新项目目录（格式：YYYYMMDD_HHMMSS_<项目名称>，如果未提供名称则询问）
-@pkm archive               # 归档所有包含 COMPLETED.md 的项目
-@pkm archive <项目名>      # 归档指定项目（如：@pkm archive UserAuth）
+@pkm archive               # 扫描所有项目，基于已存在的 COMPLETED.md 进行知识回流并搬运到 40_Archives/
+@pkm archive <项目名>      # 仅为指定项目生成/更新 COMPLETED.md 清单，不执行搬运
 ```
 
 ### 帮助与信息
@@ -296,22 +296,24 @@ PKM 由 8 个内部模块组成，每个模块负责知识管理的一个环节�
 
 ### 📦 _Archiver（生命周期管理器）
 
-**职责**：归档完成的项目，提取可复用知识回流到 Areas
+**职责**：基于 `COMPLETED.md` 归档完成的项目，并将项目中的经验与资料统一回流到 `50_Raw/`
 
 **对应阶段**：CODE 的 **Express**（生命周期管理）
 
 **触发**：
 
-- 智能模式：发现 `COMPLETED.md` 时自动归档
-- 手动调用：`@pkm archive` → 归档所有包含 COMPLETED.md 的项目
-- 手动调用：`@pkm archive <项目名>` → 归档指定项目（即使没有 COMPLETED.md）
+- 智能模式：`@pkm` 主流程中自动调用（等价于执行 `@pkm archive`，走模式 B）
+- 手动模式 A：`@pkm archive <项目名>` → 仅为指定项目生成/更新 `COMPLETED.md` 清单，不执行搬运
+- 手动模式 B：`@pkm archive` → 扫描所有项目，基于已有 `COMPLETED.md` 进行知识回流并搬运到 `40_Archives/`
+
+> **重要说明**：无论是 `@pkm` 一键主流程，还是手动执行 `@pkm archive`（模式 B），**都只会处理已经存在 `COMPLETED.md` 的项目**，不会自动为所有项目批量生成 `COMPLETED.md`；生成或更新单个项目的 `COMPLETED.md` 只能通过模式 A：`@pkm archive <项目名>`。
 
 **核心功能**：
 
-- 识别已完成的项目（存在 `COMPLETED.md` 或手动指定）
-- 移动整个项目到 `40_Archives/`
-- 提取可复用知识（架构决策、经验教训）
-- 回流到 `50_Raw/`（等待后续 Organize 和 Distill 处理）
+- 识别已完成的项目（存在 `COMPLETED.md`）
+- 移动整个项目到 `40_Archives/`，保留完整结构
+- 提取可复用知识和资料（架构决策、经验教训、学习笔记、设计文档、测试文档等）
+- 将上述内容统一回流到 `50_Raw/`，等待后续 `Organizer` 和 `Distiller` 处理
 
 **详细文档**：`_Archiver.md`
 
@@ -425,8 +427,8 @@ PKM 由 8 个内部模块组成，每个模块负责知识管理的一个环节�
   @pkm organize              组织分类 50_Raw/ 中的内容
   @pkm distill              提炼 20_Areas/03notes/ 中的知识
   @pkm distill <主题>       提炼指定主题（如：React）
-  @pkm archive               归档所有包含 COMPLETED.md 的项目
-  @pkm archive <项目名>      归档指定项目（如：UserAuth）
+  @pkm archive               扫描所有项目，基于已存在的 COMPLETED.md 回流知识到 50_Raw 并搬运到 40_Archives/
+  @pkm archive <项目名>      仅为指定项目生成/更新 COMPLETED.md（如：UserAuth），不执行搬运
   @pkm verify                仅验证知识库结构
 
 ### 帮助
@@ -556,7 +558,7 @@ mkdir -p 10_Projects 20_Areas/{manual,01principles,02playbooks,02templates,02cas
 ```text
 @pkm organize   # 只执行组织分类（处理 50_Raw/）
 @pkm distill    # 只执行提炼（处理 20_Areas/03notes/）
-@pkm archive    # 只执行归档（处理已完成项目）
+@pkm archive    # 只执行归档（模式 B：处理所有已完成项目，知识回流到 50_Raw 并搬运到 40_Archives/）
 @pkm verify     # 只验证知识库结构
 ```
 
