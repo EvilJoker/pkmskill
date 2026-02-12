@@ -1,0 +1,8 @@
+# 安装后复制为 ~/.pkm/.config 并按需修改（见 docs/ARCHITECTURE.md 2.3、6.3）
+DATA_HOME="/home/user/.pkm/data"
+CURSOR_HOME="/home/user/.cursor/"
+CLAUDE_HOME="/home/user/.claude/"
+GEMINI_HOME="/home/user/.gemini/"
+OPENCLAW_HOME="/home/user/.openclaw/"
+
+

@@ -8,8 +8,8 @@
 
 ## 触发时机
 
-- **手动调用**：用户执行 `@pkm inbox <内容>` 时
-- **在线模式**：用户执行 `@pkm inbox --online <内容>` 时（抓取网页内容）
+- **手动调用**：用户执行 `@pkm inbox <内容>` 时（默认不解析链接）
+- **解析链接后捕获**：用户执行 `@pkm inbox --parse <内容>` 时（先解析链接内容，再捕获）
 
 ---
 
@@ -21,7 +21,7 @@
 @Verifier → 确认 Inbox 存在且可写 → 继续执行 Inbox
 ```
 
-如果 Verifier 验证失败，**立即中止**。
+若 Verifier 发现目录缺失，会**自动创建**后继续。
 
 ---
 
@@ -41,14 +41,14 @@
 
 ```text
 格式 1：@pkm inbox <内容>
-格式 2：@pkm inbox --online <内容>
+格式 2：@pkm inbox --parse <内容>
 ```
 
 **解析逻辑**：
 
-1. 检查第一个参数是否为 `--online`
-   - 如果是，设置 `online_mode = True`，剩余部分作为内容
-   - 否则，设置 `online_mode = False`，全部作为内容
+1. 检查第一个参数是否为 `--parse`
+   - 如果是，设置 `parse_links = True`，先解析内容中的链接再捕获，剩余部分作为内容
+   - 否则，设置 `parse_links = False`，仅引用链接不抓取，全部作为内容
 
 2. 验证内容不为空
    - 如果为空：输出错误 "内容不能为空"，退出
@@ -101,15 +101,15 @@
 
 ### 步骤 4：处理链接（如果有）
 
-根据 `online_mode` 决定如何处理链接：
+根据 `parse_links` 决定如何处理链接：
 
-#### 模式 A：默认模式（online_mode = False）
+#### 模式 A：默认模式（parse_links = False）
 
 整理当前输入的内容，仅引用链接，不访问网页。
 
-#### 模式 B：在线模式（online_mode = True）
+#### 模式 B：--parse 模式（parse_links = True）
 
-访问并抓取网页内容，整理并合并到用户笔记中。
+先解析链接内容，再捕获。访问并抓取网页内容，整理并合并到用户笔记中。
 
 操作流程：
 
@@ -133,10 +133,10 @@
 📅 时间：2026-01-13 14:30
 ```
 
-### 成功输出（在线模式）
+### 成功输出（--parse 模式）
 
 ```text
-✅ 已捕获到 Inbox（在线模式）
+✅ 已捕获到 Inbox（已解析链接）
 
 📄 文件：50_Raw/inbox/20260113_143100_React18新特性_inbox.md
 📅 时间：2026-01-13 14:31
@@ -151,12 +151,12 @@
 
 用法：
   @pkm inbox <内容>                 # 默认模式（仅引用链接）
-  @pkm inbox --online <内容>        # 在线模式（抓取链接内容）
+  @pkm inbox --parse <内容>         # 先解析链接内容，再捕获
 
 示例：
   @pkm inbox React useEffect 的依赖数组如果为空...
   @pkm inbox Python 装饰器详解 https://docs.python.org/...
-  @pkm inbox --online 这篇文章很有用 https://example.com
+  @pkm inbox --parse 这篇文章很有用 https://example.com
 ```
 
 ---
