@@ -22,7 +22,7 @@
 @Verifier → 确认 20_Areas/ 可写（排除 manual/） → 继续执行 Distiller
 ```
 
-如果 Verifier 验证失败，**立即中止**。
+若 Verifier 发现目录缺失，会**自动创建**后继续。
 
 ---
 

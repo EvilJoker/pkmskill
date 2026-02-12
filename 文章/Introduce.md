@@ -347,7 +347,7 @@ flowchart LR
 
 | 你用的命令/动作 | 对应的 Skill 文件 | 主要职责 |
 |----------------|-------------------|----------|
-| 任意操作前 | `_Verifier.md` | 检查目录、范围、manual 只读，不通过则中止 |
+| 任意操作前 | `_Verifier.md` | 检查目录、缺失则自动创建，范围与 manual 只读 |
 | `@pkm inbox` | `_Inbox.md` | 生成原子笔记到 50_Raw/inbox/ |
 | `@pkm` 主流程 | `_Archiver.md` | 归档完成项目，抽可复用知识到 50_Raw |
 | `@pkm` 主流程 | `_Organizer.md` | 合并、分类、归位，清空 50_Raw |
@@ -356,7 +356,7 @@ flowchart LR
 | `@pkm addProject` | `_ProjectCreator.md` | 创建项目目录与 manual |
 | `@pkm todo` | `_TodoManager.md` | 维护 todo.md / todo_archive.md、四象限 |
 
-**设计要点**：单一职责、统一从 `Skill.md` 路由、先 Verify 再执行、主流程 = Verify → Archive → Organize → Distill 的组合，和「相信 AI、渐进提炼」一致。
+**设计要点**：单一职责、统一从 `SKILL.md` 路由、先 Verify 再执行、主流程 = Verify → Archive → Organize → Distill 的组合，和「相信 AI、渐进提炼」一致。
 
 **当前局限与优化思路**：本系统是一个**通用框架**，优势是适配面广，缺点是相对泛化，可从两方面理解并做增强：
 
