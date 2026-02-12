@@ -14,43 +14,63 @@
 
 ## 执行步骤
 
-### 步骤 1：检查必需的 6 个目录是否全部存在
+### 步骤 1：检查 DATA_HOME 下 5 个顶级目录是否全部存在
 
-验证以下目录结构：
+定位知识库目录：`${DATA_HOME}`。验证以下目录结构（均在 DATA_HOME 下）：
 
 ```
-知识库根目录/
+${DATA_HOME}/
 ├── 10_Projects/      # 项目目录
 ├── 20_Areas/         # 领域目录
 ├── 30_Resources/     # 资源目录
 ├── 40_Archives/      # 归档目录
-├── 50_Raw/           # 统一素材区
-└── .pkm/Skills/      # Skill 配置目录
+└── 50_Raw/           # 统一素材区
 ```
 
-**检查逻辑**：
-- 使用文件系统 API 检查这 6 个目录是否都存在
-- 如果缺少任何一个目录，记录缺失的目录名称
+（skill 位于 PKM 根目录 ~/.pkm/skill/，不在 DATA_HOME 下，不参与本检查。）
 
-### 步骤 2：中止或继续判断
+### 步骤 2：自动创建缺失目录
 
 如果有任何目录缺失：
-- ❌ **中止执行**
-- 📢 输出错误信息：
-  ```
-  ⚠️ 知识库结构不完整！
-  缺失的目录：[列出缺失的目录名]
 
-  请先初始化知识库结构：
-  mkdir -p 10_Projects 20_Areas/{manual,01principles,02playbooks,02templates,02cases,03notes} 30_Resources/{Library,summary} 40_Archives 50_Raw/{inbox,merged} .pkm/Skills
-  ```
-- 🛑 返回执行失败状态，阻止后续 Skill 运行
+- ✅ **自动创建**：直接创建缺失的目录
+- ✅ **创建子目录**：同时创建必要的子目录
+- ✅ **继续执行**：创建完成后继续后续流程
 
-### 步骤 3：识别知识库根目录
+**自动创建的目录结构**：
+
+```bash
+10_Projects/
+20_Areas/
+├── manual/
+├── 01principles/
+├── 02playbooks/
+├── 02templates/
+├── 02cases/
+└── 03notes/
+30_Resources/
+├── Library/
+└── summary/
+40_Archives/
+50_Raw/
+├── inbox/
+└── merged/
+```
+
+**输出示例**：
+
+```
+📦 检测到缺失的目录，正在创建...
+✅ 已创建 20_Areas/ 目录
+✅ 已创建 30_Resources/Library/ 目录
+✅ 目录结构已完整
+```
+
+### 步骤 3：识别数据目录（root_path）
 
 验证通过后，执行以下操作：
-- 确定当前知识库的**绝对路径**（如 `/home/user/my-knowledge-base/`）
-- 记录此路径，作为所有后续操作的基准路径
+- 确定当前知识库数据目录的**绝对路径**，即 `${DATA_HOME}`（如 `/home/user/.pkm/data/`）
+- 记录此路径作为 `root_path`，作为所有后续操作的基准路径（禁止操作此路径外的任何位置）
 
 ### 步骤 4：生成目录白名单
 
@@ -75,7 +95,6 @@
 ```
 - 20_Areas/manual/                  # 全域共用素材区（AI 只读）
 - 10_Projects/*/manual/              # 项目金标准、架构决策（AI 只读）
-- .pkm/                              # Skill 配置目录
 ```
 
 #### ❌ **禁止目录**（绝对不能操作）
@@ -107,8 +126,7 @@
   ],
   "readonly_paths": [
     "<root_path>/20_Areas/manual/",
-    "<root_path>/10_Projects/*/manual/",
-    "<root_path>/.pkm/"
+    "<root_path>/10_Projects/*/manual/"
   ],
   "forbidden": "任何不在 root_path 内的路径"
 }
@@ -150,37 +168,32 @@
 👀 只读区域：
   - 20_Areas/manual/
   - 10_Projects/*/manual/
-  - .pkm/
 
 🚫 禁止操作：知识库外的任何路径
 
 准备好执行后续 Skill...
 ```
 
-### 失败场景
+### 自动创建场景
 
 ```
-⚠️ 知识库结构不完整！
+📦 检测到缺失的目录，正在创建...
+✅ 已创建 20_Areas/manual/、01principles/、02playbooks/、02templates/、02cases/、03notes/
+✅ 目录结构已完整
 
-缺失的目录：
-  - 20_Areas/
-  - .pkm/Skills/
-
-❌ 无法继续执行，请先初始化知识库结构。
-
-初始化命令：
-mkdir -p 10_Projects 20_Areas/{manual,01principles,02playbooks,02templates,02cases,03notes} 30_Resources/{Library,summary} 40_Archives 50_Raw/{inbox,merged} .pkm/Skills
+📁 知识库根目录：/home/user/.pkm/data
+准备好执行后续 Skill...
 ```
 
 ---
 
 ## 关键原则
 
-1. **零容忍**：只要有一个目录缺失，就中止执行。
-2. **明确边界**：清晰定义可写、只读、禁止三类区域。
-3. **绝对路径**：所有路径都使用绝对路径，避免相对路径的歧义。
-4. **先验证后操作**：任何 Skill 都必须先通过 Verifier 验证。
-5. **防火墙思维**：确保 AI 绝对不会操作知识库外的文件。
+1. **自动修复**：检查到目录缺失时，自动创建而不是中止
+2. **明确边界**：清晰定义可写、只读、禁止三类区域
+3. **绝对路径**：所有路径都使用绝对路径，避免相对路径的歧义
+4. **先验证后操作**：任何 Skill 都必须先通过 Verifier 验证
+5. **防火墙思维**：确保 AI 绝对不会操作知识库外的文件
 
 ---
 
