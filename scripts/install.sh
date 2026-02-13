@@ -10,8 +10,9 @@ BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
-# 默认安装目录
-DEFAULT_PKM_HOME="${HOME}/.pkm"
+# 安装目录 = 脚本所在仓库根目录（不可交互修改，可通过安装后的 .config 调整）
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PKM_HOME="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 # ============ 帮助信息 ============
 show_help() {
@@ -21,15 +22,27 @@ show_help() {
     echo "  --help, -h     显示此帮助信息"
     echo ""
     echo "说明:"
-    echo "  默认安装目录: ${DEFAULT_PKM_HOME}"
+    echo "  安装目录为脚本所在仓库根目录，安装后可通过编辑 .config 更改路径。"
     echo ""
     echo "  支持的平台: Cursor, Claude Code, Gemini CLI, OpenCLAW"
 }
 
 # ============ 平台检测函数 ============
+# 各平台检测路径（用于输出说明）
+CURSOR_PATHS=("${HOME}/.cursor" "${HOME}/Library/Application Support/Cursor")
+CLAUDE_PATHS=("${HOME}/.claude/skills" "${HOME}/Library/Application Support/Claude/skills")
+GEMINI_PATHS=("${HOME}/.gemini/skills" "${HOME}/.gemini/agents")
+OPENCLAW_PATHS=("${HOME}/.openclaw/skills" "${HOME}/.openclaw/agents")
+
+print_paths() {
+    local name="$1"
+    shift
+    local arr=("$@")
+    echo -e "      检测路径: ${arr[*]}"
+}
 
 detect_cursor() {
-    local cursor_dirs=("${HOME}/.cursor" "${HOME}/Library/Application Support/Cursor")
+    local cursor_dirs=("${CURSOR_PATHS[@]}")
     for dir in "${cursor_dirs[@]}"; do
         [ -d "$dir" ] && echo "$dir" && return 0
     done
@@ -37,7 +50,7 @@ detect_cursor() {
 }
 
 detect_claude() {
-    local claude_dirs=("${HOME}/.claude/skills" "${HOME}/Library/Application Support/Claude/skills")
+    local claude_dirs=("${CLAUDE_PATHS[@]}")
     for dir in "${claude_dirs[@]}"; do
         [ -d "$dir" ] && echo "$dir" && return 0
     done
@@ -45,7 +58,7 @@ detect_claude() {
 }
 
 detect_gemini() {
-    local gemini_dirs=("${HOME}/.gemini/skills" "${HOME}/.gemini/agents")
+    local gemini_dirs=("${GEMINI_PATHS[@]}")
     for dir in "${gemini_dirs[@]}"; do
         [ -d "$dir" ] && echo "$dir" && return 0
     done
@@ -53,7 +66,7 @@ detect_gemini() {
 }
 
 detect_openclaw() {
-    local openclaw_dirs=("${HOME}/.openclaw/skills" "${HOME}/.openclaw/agents")
+    local openclaw_dirs=("${OPENCLAW_PATHS[@]}")
     for dir in "${openclaw_dirs[@]}"; do
         [ -d "$dir" ] && echo "$dir" && return 0
     done
@@ -65,13 +78,14 @@ detect_openclaw() {
 install_cursor() {
     local pkm_home="$1"
     local cursor_dir
-    
+
+    print_paths "Cursor" "${CURSOR_PATHS[@]}"
     cursor_dir=$(detect_cursor) || {
-        echo -e "      ${YELLOW}⚠${NC} 未检测到 Cursor，跳过"
+        echo -e "      ${YELLOW}⚠ 未检测到 Cursor${NC}（上述路径均不存在），跳过"
         return 1
     }
 
-    echo -e "      ${GREEN}✓${NC} 检测到 Cursor: $cursor_dir"
+    echo -e "      ${GREEN}✓ 检测到 Cursor: ${cursor_dir}${NC}"
 
     # 安装 Commands
     local cmd_dir="${cursor_dir}/commands"
@@ -95,13 +109,14 @@ install_cursor() {
 install_claude() {
     local pkm_home="$1"
     local claude_dir
-    
+
+    print_paths "Claude" "${CLAUDE_PATHS[@]}"
     claude_dir=$(detect_claude) || {
-        echo -e "      ${YELLOW}⚠${NC} 未检测到 Claude Code，跳过"
+        echo -e "      ${YELLOW}⚠ 未检测到 Claude Code${NC}（上述路径均不存在），跳过"
         return 1
     }
 
-    echo -e "      ${GREEN}✓${NC} 检测到 Claude Code: $claude_dir"
+    echo -e "      ${GREEN}✓ 检测到 Claude Code: ${claude_dir}${NC}"
     
     mkdir -p "$claude_dir"
     ln -sf "${pkm_home}/skill" "${claude_dir}/pkm"
@@ -113,13 +128,14 @@ install_claude() {
 install_gemini() {
     local pkm_home="$1"
     local gemini_dir
-    
+
+    print_paths "Gemini" "${GEMINI_PATHS[@]}"
     gemini_dir=$(detect_gemini) || {
-        echo -e "      ${YELLOW}⚠${NC} 未检测到 Gemini CLI，跳过"
+        echo -e "      ${YELLOW}⚠ 未检测到 Gemini CLI${NC}（上述路径均不存在），跳过"
         return 1
     }
 
-    echo -e "      ${GREEN}✓${NC} 检测到 Gemini CLI: $gemini_dir"
+    echo -e "      ${GREEN}✓ 检测到 Gemini CLI: ${gemini_dir}${NC}"
     
     mkdir -p "$gemini_dir"
     ln -sf "${pkm_home}/skill" "${gemini_dir}/pkm"
@@ -131,13 +147,14 @@ install_gemini() {
 install_openclaw() {
     local pkm_home="$1"
     local openclaw_dir
-    
+
+    print_paths "OpenCLAW" "${OPENCLAW_PATHS[@]}"
     openclaw_dir=$(detect_openclaw) || {
-        echo -e "      ${YELLOW}⚠${NC} 未检测到 OpenCLAW，跳过"
+        echo -e "      ${YELLOW}⚠ 未检测到 OpenCLAW${NC}（上述路径均不存在），跳过"
         return 1
     }
 
-    echo -e "      ${GREEN}✓${NC} 检测到 OpenCLAW: $openclaw_dir"
+    echo -e "      ${GREEN}✓ 检测到 OpenCLAW: ${openclaw_dir}${NC}"
     
     mkdir -p "$openclaw_dir"
     ln -sf "${pkm_home}/skill" "${openclaw_dir}/pkm"
@@ -169,18 +186,34 @@ echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━
 echo -e "${GREEN}📦 PKM Skill 安装程序${NC}"
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
-
-# 选择安装目录
-read -p "安装目录 [默认: ~/.pkm]: " PKM_HOME
-PKM_HOME="${PKM_HOME:-$DEFAULT_PKM_HOME}"
-PKM_HOME="${PKM_HOME/#\~/$HOME}"  # 展开 ~
-
-echo ""
 echo -e "${BLUE}📁 安装目录: ${PKM_HOME}${NC}"
 echo ""
 
-# 创建目录结构
-echo -e "${BLUE}[1/3]${NC} 创建目录结构..."
+# [1/3] 创建 .config 并填充正确路径
+echo -e "${BLUE}[1/3]${NC} 创建 .config..."
+
+CONFIG_TEMPLATE="${PKM_HOME}/.config.template"
+CONFIG_FILE="${PKM_HOME}/.config"
+
+if [ -f "$CONFIG_TEMPLATE" ]; then
+    sed "s|/home/user|${HOME}|g" "$CONFIG_TEMPLATE" | sed "s|${HOME}/\.pkm/data|${PKM_HOME}/data|g" > "$CONFIG_FILE"
+    echo -e "      ${GREEN}✓${NC} 已生成 ${CONFIG_FILE}（DATA_HOME=${PKM_HOME}/data）"
+else
+    echo -e "      ${YELLOW}⚠${NC} 未找到 .config.template，写入默认 .config"
+    cat > "$CONFIG_FILE" << EOF
+# 安装脚本生成，可按需修改（见 docs/ARCHITECTURE.md 2.3、6.3）
+DATA_HOME="${PKM_HOME}/data"
+CURSOR_HOME="${HOME}/.cursor/"
+CLAUDE_HOME="${HOME}/.claude/"
+GEMINI_HOME="${HOME}/.gemini/"
+OPENCLAW_HOME="${HOME}/.openclaw/"
+EOF
+    echo -e "      ${GREEN}✓${NC} 已生成 ${CONFIG_FILE}"
+fi
+echo ""
+
+# [2/3] 创建 data 目录结构
+echo -e "${BLUE}[2/3]${NC} 创建目录结构..."
 
 mkdir -p "${PKM_HOME}/data"
 cd "${PKM_HOME}/data"
@@ -204,26 +237,13 @@ for dir in "${DIRS[@]}"; do
     mkdir -p "$dir"
 done
 
-# 创建必要文件
 touch 30_Resources/todo.md
 touch 30_Resources/todo_archive.md
 
 echo -e "      ${GREEN}✓${NC} 目录结构已创建"
-
-# 复制 Skill 和 Command
 echo ""
-echo -e "${BLUE}[2/3]${NC} 复制 Skill 和 Command..."
 
-mkdir -p "${PKM_HOME}/skill"
-cp -r "$(dirname "$0")/../skill/"* "${PKM_HOME}/skill/"
-
-mkdir -p "${PKM_HOME}/command"
-cp -r "$(dirname "$0")/../command/"* "${PKM_HOME}/command/"
-
-echo -e "      ${GREEN}✓${NC} Skill 和 Command 已安装"
-
-# 安装到各平台
-echo ""
+# [3/3] 安装到各平台（使用当前仓库的 skill/command，无需复制）
 echo -e "${BLUE}[3/3]${NC} 安装到各平台..."
 echo ""
 
@@ -267,4 +287,6 @@ echo -e "${BLUE}🔗 已安装到: ${INSTALLED} 个平台${NC}"
 echo ""
 echo -e "${YELLOW}下一步：${NC}"
 echo "  在 AI 工具中输入 @pkm help 查看命令"
+echo ""
+echo -e "${YELLOW}提示：${NC} 可通过编辑 ${CONFIG_FILE} 修改安装位置（如 DATA_HOME、各平台路径等）。"
 echo ""
