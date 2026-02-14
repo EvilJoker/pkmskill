@@ -98,6 +98,62 @@ ${DATA_HOME}/
 ✅ 目录结构已完整
 ```
 
+### 步骤 2.5：OpenClaw Workspace 同步（仅在 OpenClaw 会话中）
+
+⚠️ **前置条件**：只有当检测到在 OpenClaw 会话中执行时才触发此步骤
+
+**检测是否在 OpenClaw 会话中**：
+```bash
+# 检查 OpenClaw 相关环境或目录
+if [ -d "$HOME/.openclaw" ] && [ -d "$HOME/.openclaw/workspace" ]; then
+    # 在 OpenClaw 环境中
+    IS_OPENCLAW=true
+fi
+```
+
+如果不在 OpenClaw 会话中，跳过此步骤，直接继续步骤 3。
+
+**执行同步检测**（如果在 OpenClaw 会话中）：
+
+1. **定义目录**：
+   - WORKSPACE_DIR：`~/.openclaw/workspace/`
+   - PROJECTS_DIR：`~/.pkm/data/10_Projects/`
+
+2. **扫描 workspace**：
+   - 遍历 workspace 中的所有条目
+   - 排除系统文件：`AGENTS.md, BOOT.md, BOOTSTRAP.md, HEARTBEAT.md, IDENTITY.md, SOUL.md, TOOLS.md, USER.md, memory/`
+
+3. **检查项目是否在 PKM 中**：
+   - 对于每个软链接/目录，检查目标路径是否在 `10_Projects/` 中
+   - 如果不在，记录为"未同步项目"
+
+4. **询问用户**：
+   如果检测到未同步的项目，输出：
+   ```
+   🔍 检测到 workspace 中有未纳入 PKM 的项目：
+   - my_project
+   
+   是否合并到 PKM？[Y/N]
+   ```
+
+5. **执行合并**（如果用户同意）：
+   - 重命名为 PKM 格式：`YYYYMMDD_HHMMSS_原名称`
+   - 移动到 `10_Projects/`
+   - 重建软链接，链接名可自定义
+
+**输出示例**：
+
+```
+🔄 正在检测 workspace 同步状态...
+✅ 已同步项目：2 个
+⚠️ 未同步项目：1 个
+   - my_project
+   
+🔍 是否合并到 PKM？[Y/N]
+```
+
+---
+
 ### 步骤 3：识别数据目录（root_path）
 
 验证通过后，执行以下操作：
