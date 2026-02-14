@@ -208,21 +208,12 @@ install_openclaw() {
 
     mkdir -p "$openclaw_dir"
 
-    # 检查主目录是否已存在
-    local link_path="${openclaw_dir}/pkm"
-    
-    # 检查运行时目录是否存在副本（Skill 市场可能已安装，不区分大小写）
-    local local_link_path
-    local_link_path=$(find "${HOME}/.local/openclaw/skills" -maxdepth 1 -type d -iname "pkm" 2>/dev/null | head -1)
-
     # 检查是否已存在软链接或目录
+    local link_path="${openclaw_dir}/pkm"
     if [ -L "$link_path" ]; then
         echo -e "      ${GREEN}✓${NC} @pkm 已存在（${link_path}），跳过"
     elif [ -d "$link_path" ]; then
         echo -e "      ${YELLOW}⚠${NC} @pkm 目录已存在（${link_path}），请先删除后再安装"
-    elif [ -n "$local_link_path" ] && [ -d "$local_link_path" ]; then
-        # 检查运行时目录是否存在副本（Skill 市场可能已安装）
-        echo -e "      ${YELLOW}⚠${NC} 检测到 @pkm 副本（${local_link_path}），请先通过 Skill 市场卸载后再安装"
     else
         ln -sf "${pkm_home}/skill" "${link_path}"
         echo -e "      ${GREEN}✓${NC} 已安装 @pkm"
