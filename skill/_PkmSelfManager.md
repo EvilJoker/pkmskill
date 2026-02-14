@@ -156,6 +156,48 @@ DATA_HOME="${DATA_HOME:-${HOME}/.pkm/data}"
 
 ## 操作 2：更新 PKM (`@pkm upgrade`)
 
+### 步骤 0：检查并初始化 PKM（如需要）
+
+在执行升级前，先检查 PKM 是否为 git 仓库：
+
+```bash
+# 检查 PKM_HOME 是否存在
+if [ ! -d "$PKM_HOME" ]; then
+    echo "PKM 目录不存在，正在创建..."
+    mkdir -p "$PKM_HOME"
+fi
+
+# 检查是否为 git 仓库
+if [ ! -d "$PKM_HOME/.git" ]; then
+    echo "检测到 PKM 不是 git 仓库，正在初始化..."
+    
+    # 备份现有数据（如存在）
+    if [ -d "$PKM_HOME/data" ] || [ -f "$PKM_HOME/.config" ]; then
+        BACKUP_DIR="${PKM_HOME}_backup_$(date +%Y%m%d_%H%M%S)"
+        echo "📦 备份现有数据到 $BACKUP_DIR..."
+        mkdir -p "$BACKUP_DIR"
+        [ -d "$PKM_HOME/data" ] && cp -r "$PKM_HOME/data" "$BACKUP_DIR/"
+        [ -f "$PKM_HOME/.config" ] && cp "$PKM_HOME/.config" "$BACKUP_DIR/"
+    fi
+    
+    # 克隆仓库
+    echo "📥 正在克隆 PKM 仓库..."
+    git clone https://github.com/EvilJoker/pkmskill.git "$PKM_HOME"
+    
+    # 恢复用户数据
+    if [ -d "$BACKUP_DIR/data" ]; then
+        echo "🔄 正在恢复用户数据..."
+        rm -rf "$PKM_HOME/data"
+        cp -r "$BACKUP_DIR/data" "$PKM_HOME/"
+    fi
+    if [ -f "$BACKUP_DIR/.config" ]; then
+        cp "$BACKUP_DIR/.config" "$PKM_HOME/"
+    fi
+    
+    echo "✅ PKM 初始化完成"
+fi
+```
+
 ### 步骤 1：确认 PKM 安装目录
 
 默认 PKM 安装目录为 `~/.pkm`（或由 PKM_HOME 环境变量指定）。

@@ -14,6 +14,38 @@
 
 ## 执行步骤
 
+### 步骤 0：检查 PKM 根目录并初始化（首次执行）
+
+检查 PKM 根目录（~/.pkm）是否存在 git 仓库：
+
+1. **读取配置**：从 `~/.pkm/.config` 读取 `DATA_HOME` 路径
+2. **检查 git 仓库**：
+   - 如果 `~/.pkm/.git` 目录存在 → 是 git 仓库，继续步骤 1
+   - 如果 `~/.pkm/.git` 不存在 → 从 Skill 市场直接安装，需要 clone
+
+3. **执行 clone**（如果需要）：
+   - 备份现有数据：`~/.pkm` → `~/.pkm_backup_<timestamp>`
+   - 只备份 data/ 和 .config（用户数据）
+   - 执行 `git clone https://github.com/EvilJoker/pkmskill.git ~/.pkm`
+   - 恢复用户数据：
+     - 恢复 data/ 目录
+     - 恢复 .config 配置文件
+
+**输出示例**：
+
+```
+🔄 检测到 PKM 不是 git 仓库，正在初始化...
+📦 备份现有数据到 ~/.pkm_backup_20260214...
+✅ 已备份
+📥 正在克隆 PKM 仓库...
+✅ 已克隆
+🔄 正在恢复用户数据...
+✅ 已恢复
+✅ PKM 初始化完成
+```
+
+---
+
 ### 步骤 1：检查 DATA_HOME 下 5 个顶级目录是否全部存在
 
 定位知识库目录：`${DATA_HOME}`。验证以下目录结构（均在 DATA_HOME 下）：

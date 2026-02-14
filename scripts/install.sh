@@ -87,6 +87,14 @@ install_cursor() {
 
     echo -e "      ${GREEN}✓ 检测到 Cursor: ${cursor_dir}${NC}"
 
+    # 安全检查：确保目标不在 PKM_HOME 内
+    local normalized_pkm_home
+    normalized_pkm_home=$(cd "$pkm_home" 2>/dev/null && pwd)
+    if [[ "$cursor_dir" == *"$normalized_pkm_home"* ]] || [[ "$normalized_pkm_home" == *"$cursor_dir"* ]]; then
+        echo -e "      ${RED}✗ 错误：安装路径与 PKM 路径冲突，无法安装${NC}"
+        return 1
+    fi
+
     # 安装 Commands
     local cmd_dir="${cursor_dir}/commands"
     mkdir -p "$cmd_dir"
@@ -97,6 +105,12 @@ install_cursor() {
         echo -e "      ${GREEN}✓${NC} 已安装 /${cmd_name}"
     done
 
+    # 安全检查：确保目标路径不会创建在 PKM_HOME 内（防止递归）
+    if [[ "${skill_dir}" == *"${pkm_home}"* ]] || [[ "${pkm_home}/skill" == *"${skill_dir}"* ]]; then
+        echo -e "      ${RED}✗ 错误：安装路径冲突，无法安装${NC}"
+        return 1
+    fi
+    
     # 安装 Skills
     local skill_dir="${cursor_dir}/skills"
     mkdir -p "$skill_dir"
@@ -117,6 +131,20 @@ install_claude() {
     }
 
     echo -e "      ${GREEN}✓ 检测到 Claude Code: ${claude_dir}${NC}"
+
+    # 安全检查：确保目标不在 PKM_HOME 内
+    local normalized_pkm_home
+    normalized_pkm_home=$(cd "$pkm_home" 2>/dev/null && pwd)
+    if [[ "$claude_dir" == *"$normalized_pkm_home"* ]] || [[ "$normalized_pkm_home" == *"$claude_dir"* ]]; then
+        echo -e "      ${RED}✗ 错误：安装路径与 PKM 路径冲突，无法安装${NC}"
+        return 1
+    fi
+    
+    # 安全检查：确保目标路径不会创建在 PKM_HOME 内（防止递归）
+    if [[ "${claude_dir}" == *"${pkm_home}"* ]] || [[ "${pkm_home}/skill" == *"${claude_dir}"* ]]; then
+        echo -e "      ${RED}✗ 错误：安装路径冲突，无法安装${NC}"
+        return 1
+    fi
     
     mkdir -p "$claude_dir"
     ln -sf "${pkm_home}/skill" "${claude_dir}/pkm"
@@ -136,6 +164,20 @@ install_gemini() {
     }
 
     echo -e "      ${GREEN}✓ 检测到 Gemini CLI: ${gemini_dir}${NC}"
+
+    # 安全检查：确保目标不在 PKM_HOME 内
+    local normalized_pkm_home
+    normalized_pkm_home=$(cd "$pkm_home" 2>/dev/null && pwd)
+    if [[ "$gemini_dir" == *"$normalized_pkm_home"* ]] || [[ "$normalized_pkm_home" == *"$gemini_dir"* ]]; then
+        echo -e "      ${RED}✗ 错误：安装路径与 PKM 路径冲突，无法安装${NC}"
+        return 1
+    fi
+    
+    # 安全检查：确保目标路径不会创建在 PKM_HOME 内（防止递归）
+    if [[ "${gemini_dir}" == *"${pkm_home}"* ]] || [[ "${pkm_home}/skill" == *"${gemini_dir}"* ]]; then
+        echo -e "      ${RED}✗ 错误：安装路径冲突，无法安装${NC}"
+        return 1
+    fi
     
     mkdir -p "$gemini_dir"
     ln -sf "${pkm_home}/skill" "${gemini_dir}/pkm"
@@ -155,10 +197,36 @@ install_openclaw() {
     }
 
     echo -e "      ${GREEN}✓ 检测到 OpenCLAW: ${openclaw_dir}${NC}"
-    
+
+    # 安全检查：确保目标不在 PKM_HOME 内，防止嵌套创建
+    local normalized_pkm_home
+    normalized_pkm_home=$(cd "$pkm_home" 2>/dev/null && pwd)
+    if [[ "$openclaw_dir" == *"$normalized_pkm_home"* ]] || [[ "$normalized_pkm_home" == *"$openclaw_dir"* ]]; then
+        echo -e "      ${RED}✗ 错误：安装路径与 PKM 路径冲突，无法安装${NC}"
+        return 1
+    fi
+
     mkdir -p "$openclaw_dir"
-    ln -sf "${pkm_home}/skill" "${openclaw_dir}/pkm"
-    echo -e "      ${GREEN}✓${NC} 已安装 @pkm"
+
+    # 检查主目录是否已存在
+    local link_path="${openclaw_dir}/pkm"
+    
+    # 检查运行时目录是否存在副本（Skill 市场可能已安装，不区分大小写）
+    local local_link_path
+    local_link_path=$(find "${HOME}/.local/openclaw/skills" -maxdepth 1 -type d -iname "pkm" 2>/dev/null | head -1)
+
+    # 检查是否已存在软链接或目录
+    if [ -L "$link_path" ]; then
+        echo -e "      ${GREEN}✓${NC} @pkm 已存在（${link_path}），跳过"
+    elif [ -d "$link_path" ]; then
+        echo -e "      ${YELLOW}⚠${NC} @pkm 目录已存在（${link_path}），请先删除后再安装"
+    elif [ -n "$local_link_path" ] && [ -d "$local_link_path" ]; then
+        # 检查运行时目录是否存在副本（Skill 市场可能已安装）
+        echo -e "      ${YELLOW}⚠${NC} 检测到 @pkm 副本（${local_link_path}），请先通过 Skill 市场卸载后再安装"
+    else
+        ln -sf "${pkm_home}/skill" "${link_path}"
+        echo -e "      ${GREEN}✓${NC} 已安装 @pkm"
+    fi
 
     return 0
 }
