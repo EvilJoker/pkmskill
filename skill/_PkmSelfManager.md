@@ -71,23 +71,23 @@ DATA_HOME="${DATA_HOME:-${HOME}/.pkm/data}"
 
 根据配置确定知识库根目录（DATA_HOME 的上级目录）。
 
-### 步骤 3：统计知识库概况
+### 步骤 3：统计知识库概况（与宪章 4.5 一致）
 
 统计各目录下的条目或文件数量：
 
-- `10_Projects/`：活跃项目数量
+- `10_Tasks/`：任务（工作空间）数量
 - `20_Areas/`：领域数量
 - `30_Resources/`：资源数量
-- `40_Archives/`：归档项目数量
+- `40_Archives/`：归档数量
 - `50_Raw/`：待处理素材数量
 
-### 步骤 4：获取项目列表
+### 步骤 4：获取长期项目列表
 
-引用 `@pkm project ls` 获取活跃项目列表；引用 `@pkm project ls --done` 可展示已完成项目。
+引用 `@pkm project ls` 获取 20_Areas/Projects/ 下的长期项目列表。
 
 ### 步骤 5：获取任务列表
 
-引用 `@pkm todo ls` 获取待办任务列表；引用 `@pkm todo ls --done` 可展示已完成任务。
+引用 `@pkm task ls` 获取待办任务列表；引用 `@pkm task ls --all` 可展示含已归档任务。
 
 ### 步骤 6：获取 PKM 版本
 
@@ -113,7 +113,7 @@ DATA_HOME="${DATA_HOME:-${HOME}/.pkm/data}"
 
 📊 知识库概况
    ┌─────────────────────┬────────┐
-   │ 10_Projects         │ 3 个   │
+   │ 10_Tasks            │ 3 个   │
    │ 20_Areas            │ 5 个   │
    │ 30_Resources        │ 2 个   │
    │ 40_Archives         │ 8 个   │
@@ -146,8 +146,8 @@ DATA_HOME="${DATA_HOME:-${HOME}/.pkm/data}"
 
 💡 提示：
   - 使用 @pkm 整理知识库
-  - 使用 @pkm project ls --done 查看已完成项目
-  - 使用 @pkm todo ls --done 查看已完成任务
+  - 使用 @pkm project ls 查看长期项目
+  - 使用 @pkm task ls 与 @pkm task ls --all 查看任务
   - 使用 @pkm upgrade 更新 PKM 版本
   - 使用 @pkm help 查看帮助
 ```

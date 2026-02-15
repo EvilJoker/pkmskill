@@ -102,28 +102,16 @@
 - **内容**：读取文件内容的前 200 字或全部内容（如果很短）
 - **元数据**：创建时间、文件类型、大小
 
-#### 3.2 判断类型（核心逻辑）
+#### 3.2 判断类型（核心逻辑，与宪章 4.2 一致：项目/知识/资料）
 
-##### 类型 A：可执行任务
+##### 类型 A：项目相关
 
-识别特征：
+识别特征：内容明确属于某个**长期项目**（对应 `20_Areas/Projects/` 下已有项目），如项目文档、项目内笔记、项目产出物。
 
-- 包含动词：实现、修复、添加、优化、部署
-- 包含时间信息：本周、下周、截止日期
-- 包含具体目标：完成 XXX 功能、解决 YYY Bug
-- 包含任务清单：`- [ ]` 格式
+- 能关联到现有长期项目（通过项目名、上下文等）
+- 若无法关联到任何现有项目，**不**放入 Projects，按知识或资料处理
 
-示例：
-
-```markdown
-文件：`实现用户登录功能.md`
-内容：
-- [ ] 设计数据库表结构
-- [ ] 实现后端 API
-- [ ] 完成前端页面
-```
-
-分流目标：`10_Projects/`（直接放在项目目录下）
+分流目标：`20_Areas/Projects/<项目名称>`（**仅当有关联项目时**；若无对应项目则忽略此类归位，归入知识或资料）
 
 ---
 
@@ -143,7 +131,7 @@
 内容：useEffect 的依赖数组如果为空，只在组件挂载时执行一次...
 ```
 
-分流目标：`20_Areas/03notes/<领域>/`（先放在 notes 层，等待后续 Distill 提炼）
+分流目标：`20_Areas/knowledge/03notes/<领域>/`（先放在 notes 层，等待后续 Distill 提炼）
 
 ---
 
@@ -164,7 +152,7 @@
 示例目录结构：
 
 ```text
-20_Areas/03notes/01_react/
+20_Areas/knowledge/03notes/01_react/
 ├── 20260113_143012_useEffect依赖数组.md
 ├── 20260113_143015_useState批量更新.md
 ├── 20260113_143020_Redux状态管理入门.md
@@ -216,47 +204,50 @@
 
 根据判断结果，将文件（包括合并后的文件）移动到目标位置。
 
-#### 规则 A：可执行任务 → Projects
+#### 规则 A：项目相关 → 20_Areas/Projects
+
+仅当能关联到 `20_Areas/Projects/` 下**已有**长期项目时执行。
 
 示例：
 
 ```text
-源路径：50_Raw/inbox/20260113_143012_实现用户登录功能_inbox.md
-或：50_Raw/merged/20260113_143500_用户认证任务_merged.md
-目标路径：10_Projects/20260113_143000_XXX/20260113_143012_实现用户登录功能.md
+源路径：50_Raw/inbox/20260113_143012_项目A设计说明_inbox.md
+或：50_Raw/merged/20260113_143500_项目B会议纪要_merged.md
+目标路径：20_Areas/Projects/<项目名称>/20260113_143012_项目A设计说明.md
 ```
 
 操作步骤：
 
-1. 检查是否存在相关项目（通过关键词匹配）
-2. 在文件顶部添加元数据（created, source, type, project）
+1. 检查 `20_Areas/Projects/` 下是否存在可关联的项目（通过项目名、上下文匹配）
+2. 若存在则移动到该项目目录；若不存在则按知识或资料归位，不放入 Projects
+3. 在文件顶部添加元数据（created, source, type, project）
 
 ---
 
-#### 规则 B：知识片段 → Areas/03notes
+#### 规则 B：知识片段 → 20_Areas/knowledge/03notes
 
 示例：
 
 ```text
 源路径：50_Raw/inbox/20260113_143012_React_useEffect依赖数组_inbox.md
 或：50_Raw/merged/20260113_143500_React_Hooks_merged.md
-目标路径：20_Areas/03notes/01_python/20260113_143012_React_useEffect依赖数组.md
-或：20_Areas/03notes/01_react/20260113_143500_React_Hooks.md
+目标路径：20_Areas/knowledge/03notes/01_python/20260113_143012_React_useEffect依赖数组.md
+或：20_Areas/knowledge/03notes/01_react/20260113_143500_React_Hooks.md
 ```
 
 操作步骤（包含领域分类）：
 
 1. **提取并规范化**：识别知识领域（如 React、Python、算法设计等）
-2. **领域分类**：将知识分类到 `20_Areas/03notes/<领域>/` 目录
+2. **领域分类**：将知识分类到 `20_Areas/knowledge/03notes/<领域>/` 目录
    - 如果领域目录不存在，创建新目录（如 `01_python/`、`02_算法设计/`）
 3. **生成文件名**：格式 `YYYYMMDD_HHMMSS_标题.md`
 4. **添加元数据**：包含 topic、domain、keywords、status
 
 领域分类规则：
 
-**AI 自行识别并创建分类**：根据知识内容智能识别领域，动态管理 `20_Areas/03notes/` 下的领域目录。
+**AI 自行识别并创建分类**：根据知识内容智能识别领域，动态管理 `20_Areas/knowledge/03notes/` 下的领域目录。
 
-- **创建新领域**：如果识别到新的知识领域，自动创建对应的领域目录（如 `01_react/`、`01_python/`、`02_算法设计/` 等）
+- **创建新领域**：如果识别到新的知识领域，在 `20_Areas/knowledge/03notes/` 下自动创建对应目录（如 `01_react/`、`01_python/`、`02_算法设计/` 等）
 - **使用现有领域**：如果知识属于已有领域，归类到对应目录
 - **合并领域**：如果发现多个领域目录内容相似或重复，可以合并为一个领域
 - **拆分领域**：如果某个领域目录内容过多或主题分散，可以拆分为多个更细粒度的领域
@@ -334,18 +325,17 @@ organizer_confidence: high        # 分类置信度（high/medium/low）
 
 ## 分类归位统计
 
-### 可执行任务 → Projects：3 个
+### 项目相关 → 20_Areas/Projects：2 个
 
-- 实现用户登录功能.md → 10_Projects/UserAuth/
-- 修复支付Bug.md → 10_Projects/Payment/
-- 优化数据库查询.md → 10_Projects/Performance/
+- 项目A设计说明.md → 20_Areas/Projects/01_项目A/
+- 项目B会议纪要.md → 20_Areas/Projects/02_项目B/
 
-### 知识片段 → Areas/03notes：7 个
+### 知识片段 → 20_Areas/knowledge/03notes：7 个
 
-- React_useEffect_依赖数组.md → 20_Areas/03notes/01_react/
-- Python_装饰器用法.md → 20_Areas/03notes/01_python/
-- Docker容器优化.md → 20_Areas/03notes/02_docker/ (新建领域)
-- SQL索引优化.md → 20_Areas/03notes/03_database/
+- React_useEffect_依赖数组.md → 20_Areas/knowledge/03notes/01_react/
+- Python_装饰器用法.md → 20_Areas/knowledge/03notes/01_python/
+- Docker容器优化.md → 20_Areas/knowledge/03notes/02_docker/ (新建领域)
+- SQL索引优化.md → 20_Areas/knowledge/03notes/03_database/
 
 ## 领域分类统计
 
@@ -369,7 +359,7 @@ organizer_confidence: high        # 分类置信度（high/medium/low）
 
 ## 待人工确认（低置信度）
 
-- [待确认] 会议记录.txt → 20_Areas/03notes/00_未分类/
+- [待确认] 会议记录.txt → 20_Areas/knowledge/03notes/00_未分类/
 
 ## 50_Raw/ 状态
 
@@ -395,7 +385,7 @@ organizer_confidence: high        # 分类置信度（high/medium/low）
 
 ### 情况 1：无法判断类型
 
-- 移动到 `20_Areas/03notes/00_未分类/`
+- 移动到 `20_Areas/knowledge/03notes/00_未分类/`
 - 文件名加 `[待确认]` 前缀
 - 在报告中标注，等待人工介入
 
@@ -426,7 +416,7 @@ organizer_confidence: high        # 分类置信度（high/medium/low）
 
 ### 情况 5：跨领域知识
 
-- **优先策略**：归并到主要领域（20_Areas/03notes/01_python/）
+- **优先策略**：归并到主要领域（20_Areas/knowledge/03notes/01_python/）
 - **备选策略**：如果交叉内容很多（10+ 个），创建独立领域目录（如 `03_python_database/`）
 
 ---

@@ -53,25 +53,24 @@
    - 如果是，解析 scope 值，剩余部分作为问题
    - 否则，设置 `scope = ["common", "local"]`（默认），全部作为问题
 
-2. 解析 scope 值（如果存在）：
-   - 支持单个值：`--scope common`、`--scope local`、`--scope 项目名`
-   - 支持多个值（逗号分隔）：`--scope common,local`、`--scope local,项目名`
+2. 解析 scope 值（如果存在）（与宪章 4.3 一致）：
+   - 支持单个值：`--scope common`、`--scope local`、`--scope task` 或 `--scope <任务名>`
+   - 支持多个值（逗号分隔）：`--scope common,local`、`--scope local,task` 等
    - 解析为 scope 列表：`["common"]`、`["local"]`、`["common", "local"]` 等
 
 3. 验证问题不为空
    - 如果为空：输出错误 "问题不能为空"，退出
 
-**scope 值说明**：
+**scope 值说明**（与宪章 4.3 一致）：
 
-- `common`：AI 通用知识，不考虑当前知识库
-- `local`：基于当前知识库（20_Areas, 30_Resources, 40_Archives）
-- `项目名`：基于指定项目的知识库（10_Projects/项目名/）
-- 默认（无 scope）：`common + local`，等价于 `--scope common,local`
+- `common`：仅使用 AI 通用知识
+- `local`：仅检索当前知识库（10_Tasks、20_Areas、30_Resources、40_Archives）
+- `task` 或 `<任务名>`：检索指定任务知识库（10_Tasks/<任务工作区目录名>/）
+- 默认（无 scope）：`common + local`，可叠加
 
 **scope 可以叠加**：
 - `--scope common,local`：AI 通用知识 + 当前知识库
-- `--scope local,项目名`：当前知识库 + 指定项目知识库
-- `--scope common,local,项目名`：AI 通用知识 + 当前知识库 + 指定项目知识库
+- `--scope local,任务名`：当前知识库 + 指定任务知识库
 
 ### 步骤 3：理解用户意图
 
@@ -103,15 +102,13 @@
    - 不检索知识库（或仅作为补充）
 
 2. **如果 scope 包含 `local`**：
-   - **思考决策类**：按金字塔模式（principles → playbooks/templates/cases → notes → manual → Library → Archives）
+   - 检索当前知识库：10_Tasks、20_Areas、30_Resources、40_Archives
+   - **思考决策类**：按金字塔模式（20_Areas/knowledge/01principles → 02playbooks/02templates/02cases → 03notes → manual → Library → Archives）
    - **查找汇总类**：按可靠性优先（manual → principles → playbooks/templates/cases → notes → Library → Archives）
 
-3. **如果 scope 包含项目名**：
-   - 检索指定项目的知识库：
-     1. `10_Projects/<项目名>/manual/`（受保护区）
-     2. `10_Projects/<项目名>/`（项目文件）
-     3. `10_Projects/<项目名>/docs/`（如果有）
-     4. `10_Projects/<项目名>/design/`（如果有）
+3. **如果 scope 包含 `task` 或任务名**：
+   - 检索指定任务知识库：`10_Tasks/<任务工作区目录名>/`（如 TASK_WORKSPACE_YYYYMMDD_HHMMSS_xxx/）
+   - 主要读取该目录下的 task.md 及任务相关文件
 
 **匹配方法**：文件名匹配、路径匹配、时间相关性（优先最近的）
 
