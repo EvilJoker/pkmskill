@@ -10,19 +10,26 @@
 
 ## 工作流
 
+主流程执行顺序（与 `docs/ARCHITECTURE.md` 4.2 一致）：
+
 ```
 Verify → Archive → Organize → Distill
 ```
+
+- **Verify**：前置安全检查（5 个顶级目录、操作范围、写权限白名单）
+- **Archive**：调用 `@pkm task archive` 执行任务归档与知识回流
+- **Organize**：合并、分类、归位，清空 50_Raw/
+- **Distill**：深度整合、金字塔提炼、系统性检查，生成报告
 
 ## 命令列表
 
 | 命令 | 功能 |
 |------|------|
-| `/pkm` | 主流程 |
-| `/pkm.inbox` | 快速捕获 |
+| `/pkm` | 主流程（Verify → Archive → Organize → Distill） |
+| `/pkm.inbox` | 快速捕获到 inbox |
 | `/pkm.advice` | 智能咨询 |
-| `/pkm.todo` | 任务管理 |
-| `/pkm.project` | 项目管理 |
-| `/pkm.status` | 查看状态 |
-| `/pkm.upgrade` | 更新版本 |
-| `/pkm.help` | 帮助 |
+| `/pkm.help` | 帮助信息 |
+| `/pkm.task` | 任务管理 |
+| `/pkm.status` | 查看知识库信息 |
+| `/pkm.upgrade` | 更新 pkm 版本 |
+| `/pkm.project` | 长期项目管理（add/delete/ls） |
