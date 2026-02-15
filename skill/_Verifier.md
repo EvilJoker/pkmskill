@@ -52,8 +52,8 @@
 
 ```
 ${DATA_HOME}/
-├── 10_Projects/      # 项目目录
-├── 20_Areas/         # 领域目录
+├── 10_Tasks/         # 任务（任务工作空间）
+├── 20_Areas/         # 领域（含 Projects、manual、knowledge）
 ├── 30_Resources/     # 资源目录
 ├── 40_Archives/      # 归档目录
 └── 50_Raw/           # 统一素材区
@@ -69,17 +69,19 @@ ${DATA_HOME}/
 - ✅ **创建子目录**：同时创建必要的子目录
 - ✅ **继续执行**：创建完成后继续后续流程
 
-**自动创建的目录结构**：
+**自动创建的目录结构**（与 `docs/ARCHITECTURE.md` 2.4 一致）：
 
 ```bash
-10_Projects/
+10_Tasks/
 20_Areas/
+├── Projects/
 ├── manual/
-├── 01principles/
-├── 02playbooks/
-├── 02templates/
-├── 02cases/
-└── 03notes/
+└── knowledge/
+   ├── 01principles/
+   ├── 02playbooks/
+   ├── 02templates/
+   ├── 02cases/
+   └── 03notes/
 30_Resources/
 ├── Library/
 └── summary/
@@ -98,60 +100,6 @@ ${DATA_HOME}/
 ✅ 目录结构已完整
 ```
 
-### 步骤 2.5：OpenClaw Workspace 同步（仅在 OpenClaw 会话中）
-
-⚠️ **前置条件**：只有当检测到在 OpenClaw 会话中执行时才触发此步骤
-
-**检测是否在 OpenClaw 会话中**：
-```bash
-# 检查 OpenClaw 相关环境或目录
-if [ -d "$HOME/.openclaw" ] && [ -d "$HOME/.openclaw/workspace" ]; then
-    # 在 OpenClaw 环境中
-    IS_OPENCLAW=true
-fi
-```
-
-如果不在 OpenClaw 会话中，跳过此步骤，直接继续步骤 3。
-
-**执行同步检测**（如果在 OpenClaw 会话中）：
-
-1. **定义目录**：
-   - WORKSPACE_DIR：`~/.openclaw/workspace/`
-   - PROJECTS_DIR：`~/.pkm/data/10_Projects/`
-
-2. **扫描 workspace**：
-   - 遍历 workspace 中的所有条目
-   - 排除系统文件：`AGENTS.md, BOOT.md, BOOTSTRAP.md, HEARTBEAT.md, IDENTITY.md, SOUL.md, TOOLS.md, USER.md, memory/`
-
-3. **检查项目是否在 PKM 中**：
-   - 对于每个软链接/目录，检查目标路径是否在 `10_Projects/` 中
-   - 如果不在，记录为"未同步项目"
-
-4. **询问用户**：
-   如果检测到未同步的项目，输出：
-   ```
-   🔍 检测到 workspace 中有未纳入 PKM 的项目：
-   - my_project
-   
-   是否合并到 PKM？[Y/N]
-   ```
-
-5. **执行合并**（如果用户同意）：
-   - 重命名为 PKM 格式：`YYYYMMDD_HHMMSS_原名称`
-   - 移动到 `10_Projects/`
-   - 重建软链接，链接名可自定义
-
-**输出示例**：
-
-```
-🔄 正在检测 workspace 同步状态...
-✅ 已同步项目：2 个
-⚠️ 未同步项目：1 个
-   - my_project
-   
-🔍 是否合并到 PKM？[Y/N]
-```
-
 ---
 
 ### 步骤 3：识别数据目录（root_path）
@@ -167,22 +115,22 @@ fi
 #### ✅ **可写目录**（AI 可以创建、修改、删除文件）
 
 ```
-- 50_Raw/                           # 统一素材区
-- 10_Projects/*/                    # 项目目录（排除 manual/）
-- 20_Areas/03notes/                 # 整理知识层
-- 20_Areas/02playbooks/             # 应用层：标准化流程
-- 20_Areas/02templates/              # 应用层：可复用模版
-- 20_Areas/02cases/                  # 应用层：具体案例
-- 20_Areas/01principles/            # 原则层：顶层智慧
-- 30_Resources/                      # 资源目录（资料库、报告汇总等）
-- 40_Archives/                       # 归档区
+- 50_Raw/                              # 统一素材区
+- 10_Tasks/                            # 任务工作空间
+- 20_Areas/Projects/                   # 长期项目
+- 20_Areas/knowledge/03notes/          # 整理知识层
+- 20_Areas/knowledge/02playbooks/     # 应用层：标准化流程
+- 20_Areas/knowledge/02templates/     # 应用层：可复用模版
+- 20_Areas/knowledge/02cases/         # 应用层：具体案例
+- 20_Areas/knowledge/01principles/    # 原则层：顶层智慧
+- 30_Resources/                        # 资源目录（含 Library、summary）
+- 40_Archives/                         # 归档区
 ```
 
 #### ✅ **只读目录**（AI 只能读取，不能修改）
 
 ```
-- 20_Areas/manual/                  # 全域共用素材区（AI 只读）
-- 10_Projects/*/manual/              # 项目金标准、架构决策（AI 只读）
+- 20_Areas/manual/                    # 受保护区（宪章 2.4，AI 只读）
 ```
 
 #### ❌ **禁止目录**（绝对不能操作）
@@ -203,18 +151,18 @@ fi
   "root_path": "/path/pkmSkill",
   "writable_paths": [
     "<root_path>/50_Raw/",
-    "<root_path>/10_Projects/*/",
-    "<root_path>/20_Areas/03notes/",
-    "<root_path>/20_Areas/02playbooks/",
-    "<root_path>/20_Areas/02templates/",
-    "<root_path>/20_Areas/02cases/",
-    "<root_path>/20_Areas/01principles/",
+    "<root_path>/10_Tasks/",
+    "<root_path>/20_Areas/Projects/",
+    "<root_path>/20_Areas/knowledge/03notes/",
+    "<root_path>/20_Areas/knowledge/02playbooks/",
+    "<root_path>/20_Areas/knowledge/02templates/",
+    "<root_path>/20_Areas/knowledge/02cases/",
+    "<root_path>/20_Areas/knowledge/01principles/",
     "<root_path>/30_Resources/",
     "<root_path>/40_Archives/"
   ],
   "readonly_paths": [
-    "<root_path>/20_Areas/manual/",
-    "<root_path>/10_Projects/*/manual/"
+    "<root_path>/20_Areas/manual/"
   ],
   "forbidden": "任何不在 root_path 内的路径"
 }
@@ -244,18 +192,14 @@ fi
 
 ✅ 可写区域：
   - 50_Raw/
-  - 10_Projects/*/（排除 manual/）
-  - 20_Areas/03notes/
-  - 20_Areas/02playbooks/
-  - 20_Areas/02templates/
-  - 20_Areas/02cases/
-  - 20_Areas/01principles/
+  - 10_Tasks/
+  - 20_Areas/Projects/
+  - 20_Areas/knowledge/03notes/、02playbooks/、02templates/、02cases/、01principles/
   - 30_Resources/
   - 40_Archives/
 
 👀 只读区域：
   - 20_Areas/manual/
-  - 10_Projects/*/manual/
 
 🚫 禁止操作：知识库外的任何路径
 
@@ -266,7 +210,7 @@ fi
 
 ```
 📦 检测到缺失的目录，正在创建...
-✅ 已创建 20_Areas/manual/、01principles/、02playbooks/、02templates/、02cases/、03notes/
+✅ 已创建 20_Areas/manual/、knowledge/01principles/、02playbooks/、02templates/、02cases/、03notes/、Projects/
 ✅ 目录结构已完整
 
 📁 知识库根目录：/home/user/.pkm/data

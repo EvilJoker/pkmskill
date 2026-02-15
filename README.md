@@ -19,7 +19,7 @@ PKM Skill 是一个智能知识管理工具包，通过 AI 自动化处理知识
 
 五层生命周期管理，让知识自然流动：
 
-- **10_Projects（项目）**：短期目标，有明确截止日期
+- **10_Tasks（任务）**：短期目标，有明确截止日期，任务清单为 tasks.md / tasks_archive.md
 - **20_Areas（领域）**：长期关注，持续积累的知识领域
 - **30_Resources（资源）**：参考资料
 - **40_Archives（归档）**：已完成项目，保持系统轻量
@@ -55,8 +55,8 @@ PKM Skill 是一个智能知识管理工具包，通过 AI 自动化处理知识
 
 - 🎯 **统一命令入口**：通过 `@pkm` 一键管理知识库
 - 📥 **快速捕获**：`@pkm inbox` 快速记录，降低捕获门槛
-- 📋 **任务管理**：`@pkm todo` 管理待办任务，支持4象限管理方法
-- 🏗️ **项目管理**：`@pkm project add/ls/done` 等管理项目与归档
+- 📋 **任务管理**：`@pkm task add/ls/done/archive` 管理任务，支持 4 象限，任务数据在 10_Tasks/
+- 🏗️ **项目管理**：`@pkm project add/ls` 管理长期项目（20_Areas/Projects/）
 - 🤖 **智能自动化**：自动分类、蒸馏落地、归档
 - 🔌 **Organizer 插件**：可选按内容类型用模版预处理（如故障总结、会议纪要），再分类归位
 - 🔒 **安全防护**：严格的范围守卫，保护人工知识区域
@@ -103,15 +103,34 @@ bash ~/.pkm/scripts/install.sh
 
 首次使用时，`@pkm` 会自动检查并创建缺失的数据目录（DATA_HOME 下的 PARA 结构），无需手动初始化。
 
+### 从旧项目格式迁移
+
+若你之前使用过 **10_Projects**（项目目录）或 **30_Resources/todo.md、todo_archive.md**，可一键迁移到新的 **10_Tasks**（任务）格式：
+
+```bash
+# 在 PKM 仓库根目录（如 ~/.pkm）执行
+bash scripts/migrate-projects-to-tasks.sh
+```
+
+- **10_Projects/YYYYMMDD_HHMMSS_xxx/** → 每个目录会变成 **10_Tasks/TASK_WORKSPACE_YYYYMMDD_HHMMSS_xxx/**，并生成 `task.md`；若目录内有 `COMPLETED.md`，会转为 `completed.md` 并写入 `tasks_archive.md`。
+- **todo.md / todo_archive.md** → 内容会并入 `tasks.md`、`tasks_archive.md` 作为参考块，便于你后续整理为正式任务索引。
+- 执行后原 **10_Projects** 会备份为 **10_Projects.bak.<时间戳>**，确认无误后可删除。
+
+预览不写入：`bash scripts/migrate-projects-to-tasks.sh --dry-run`
+
 ### 常用命令
 
 | 命令 | 功能 | 使用场景 |
 | ---- | ---- | -------- |
-| **项目管理** | | |
-| `@pkm project add <名称>` | 创建新项目 | 格式：YYYYMMDD_HHMMSS_<名称> |
-| `@pkm project ls` | 列出项目 | 查看所有活跃项目 |
-| `@pkm project done <名称>` | 标记完成 | 生成 COMPLETED.md |
-| `@pkm project archive` | 归档项目 | 知识回流 + 移到 40_Archives/ |
+| **任务管理** | | |
+| `@pkm task add <内容>` | 添加任务 | 创建任务空间与 task.md，写入 tasks.md 索引 |
+| `@pkm task ls` | 列出任务 | 按 4 象限，含进展核查与延期提示 |
+| `@pkm task use <id>` | 切换任务 | 加载任务区信息到当前上下文 |
+| `@pkm task done <id>` | 完成任务 | 生成 completed.md，写入 tasks_archive.md |
+| `@pkm task archive` | 归档任务 | 自动扫描含 completed.md 的任务，回流知识并移至 40_Archives/ |
+| **长期项目** | | |
+| `@pkm project add <名称>` | 添加长期项目 | 在 20_Areas/Projects/ 下创建 |
+| `@pkm project ls` | 列出长期项目 | 查看 20_Areas/Projects/ |
 | **智能咨询** | | |
 | `@pkm advice <问题>` | 智能咨询 | 默认：AI + 知识库 |
 | `@pkm advice --scope <范围> <问题>` | 指定范围 | scope: common/local/项目名 |
@@ -129,10 +148,10 @@ bash ~/.pkm/scripts/install.sh
 
 `@pkm` 是最常用的命令，会自动检测并执行：
 
-1. **Verify** - 验证知识库目录结构
-2. **Archive** - 归档已完成项目（标记 COMPLETED.md → 40_Archives/，知识回流到 50_Raw/）
-3. **Organize** - 分类归位 50_Raw/ → 20_Areas/03notes/
-4. **Distill** - 提炼 20_Areas/03notes/ → 应用层/原则层
+1. **Verify** - 验证知识库目录结构（10_Tasks、20_Areas、30_Resources、40_Archives、50_Raw）
+2. **Archive** - 归档已完成任务（扫描 10_Tasks 中含 completed.md 的，回流知识并移至 40_Archives/）
+3. **Organize** - 分类归位 50_Raw/ → 20_Areas/knowledge/、Projects/、30_Resources/Library
+4. **Distill** - 提炼 20_Areas/knowledge/03notes/ → 应用层/原则层
 
 推荐：每天结束前执行一次 `@pkm`
 
@@ -168,29 +187,23 @@ bash ~/.pkm/scripts/install.sh
 ### 日常工作流
 
 ```text
-# 1. 创建任务
-@pkm todo 实现用户认证功能
+# 1. 添加任务
+@pkm task add 实现用户认证功能
 
-# 2. 根据任务创建项目
+# 2. 可选：添加关联的长期项目
 @pkm project add 用户认证系统
 
 # 3. 更新任务进展
-@pkm todo update T-20260113-143000-001
+@pkm task update T-20260113-143000-001
 
-# 4. 更新项目进展
-@pkm project update 用户认证系统
+# 4. 完成任务（追问总结：内容、收益、价值评分，生成 completed.md）
+@pkm task done T-20260113-143000-001
 
-# 5. 完成任务（追问总结：内容、收益、价值评分）
-@pkm todo done T-20260113-143000-001
-
-# 6. 项目完成，标记完成
-@pkm project done 用户认证系统
-
-# 7. 自动归档项目 + 整理知识（推荐每天执行）
+# 5. 自动归档已完成任务 + 整理知识（推荐每天执行）
 @pkm
 ```
 
-**@pkm 自动执行**：归档已完成项目 + 组织分类 50_Raw/ + 提炼 20_Areas/03notes/
+**@pkm 自动执行**：归档含 completed.md 的任务（回流知识到 20_Areas/）+ 组织分类 50_Raw/ + 提炼 20_Areas/knowledge/03notes/
 
 ### 遇到问题：智能咨询
 
@@ -198,7 +211,7 @@ bash ~/.pkm/scripts/install.sh
 @pkm advice React 性能优化有哪些最佳实践？
 @pkm advice --scope common React 18 新特性有哪些？
 @pkm advice --scope local 上次 Redis 连接池问题怎么解决的？
-@pkm advice --scope 20260113_143000_用户认证系统 这个项目的架构设计是什么？
+@pkm advice --scope task 这个任务的架构设计是什么？
 @pkm advice 这篇关于微服务的笔记应该放到哪个目录？
 ```
 

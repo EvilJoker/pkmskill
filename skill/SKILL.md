@@ -50,9 +50,9 @@ DATA_HOME="${DATA_HOME:-${HOME}/.pkm/data}"
 我会自动判断当前需要执行的操作：
 
 - ✅ 检查知识库结构（Verify）
-- 🗄️ 如果有项目标记完成 → 调用 `@pkm project archive` 自动归档（Archive）
+- 🗄️ 若有已完成任务 → 调用 `@pkm task archive` 执行归档回流（Archive）
 - 📦 如果 50_Raw/ 有文件 → 自动组织分类（Organize）
-- 💎 如果 20_Areas/03notes/ 有新增/变动 → 自动提炼（Distill）
+- 💎 如果 20_Areas/knowledge/03notes/ 有新增/变动 → 自动提炼（Distill）
 
 ### 查看帮助
 
@@ -75,15 +75,15 @@ DATA_HOME="${DATA_HOME:-${HOME}/.pkm/data}"
 **一键全自动处理**，系统智能整理和提炼知识，无需人工干预。
 
 **自动顺序执行**（不推荐单独使用）：
-- `@pkm verify` - 自动检查知识库结构完整性（5 个顶级目录）
-- 主流程中的 Archive - 调用 `@pkm project archive` 检测并归档已完成的项目（基于 `COMPLETED.md`，回流知识到 `50_Raw/` 并搬运到 `40_Archives/`）
+- `@pkm verify` - 自动检查知识库结构完整性（5 个顶级目录：10_Tasks、20_Areas、30_Resources、40_Archives、50_Raw）
+- 主流程中的 Archive - 调用 `@pkm task archive` 自动扫描所有任务工作空间，归档含 completed.md 的已完成任务（知识回流到 20_Areas/knowledge/ 与 20_Areas/Projects/，任务移至 40_Archives/）
 - `@pkm organize` - 自动分类整理 `50_Raw/` 中的待处理内容
-- `@pkm distill` - 自动提炼 `20_Areas/03notes/` 中的知识
+- `@pkm distill` - 自动提炼 `20_Areas/knowledge/03notes/` 中的知识
 
 **适用场景**：
 
 - ✅ 每天结束前执行一次，自动整理当天积累的知识
-- ✅ 项目完成后，自动归档并提取知识
+- ✅ 任务完成后，自动归档并回流知识
 - ✅ 定期维护，保持知识库整洁有序
 
 ### 快速捕获
@@ -100,34 +100,34 @@ DATA_HOME="${DATA_HOME:-${HOME}/.pkm/data}"
 @pkm advice --scope <范围> <问题>           # 指定范围模式
 
 scope 值：
-  - common          # AI 通用知识
-  - local           # 当前知识库
-  - 项目名          # 指定项目知识库
-  - 可叠加：common,local 或 local,项目名
+  - common          # 仅 AI 通用知识
+  - local           # 仅当前知识库
+  - task            # 指定任务知识库
+  - 默认：common + local（可叠加）
 ```
 
 ### 任务管理
 
 ```text
-@pkm todo add <内容>       # 添加新任务
-@pkm todo ls               # 列出所有任务
-@pkm todo ls --done        # 列出已完成任务
-@pkm todo edit <id>        # 编辑任务
-@pkm todo update <id>      # 更新任务进展
-@pkm todo done <id>        # 完成任务
-@pkm todo delete <id>      # 删除任务
+@pkm task add <内容>        # 添加新任务，创建任务区（交互式补全：想法、4象限、计划完成时间、工作量）
+@pkm task ls                # 列出所有任务（按计划完成时间排序，含延期风险提示）
+@pkm task ls --all          # 列出所有任务（含已归档）
+@pkm task use <id>   # 切换到指定任务，加载任务区信息
+@pkm task edit <id>         # 编辑任务
+@pkm task update <id>       # 更新任务进展
+@pkm task done <id>         # 完成任务，总结任务清单
+@pkm task delete <id>       # 删除任务
+@pkm task archive            # 自动扫描含 completed.md 的任务并归档，回流知识到知识库
 ```
 
-### 项目管理
+**任务字段**：状态、ID、标题、工作空间路径、4象限、计划完成时间、工作量
+
+### 长期项目管理
 
 ```text
-@pkm project add <名称>     # 创建新项目目录（格式：YYYYMMDD_HHMMSS_<名称>）
-@pkm project ls             # 列出所有项目
-@pkm project ls --done      # 列出已完成项目
-@pkm project done <项目名>  # 标记项目完成（生成 COMPLETED.md）
-@pkm project update <项目名> # 更新项目进展
-@pkm project delete <项目名> # 删除项目
-@pkm project archive        # 归档已完成项目（知识回流 + 移动到 40_Archives/）
+@pkm project add <名称>     # 在 20_Areas/Projects/ 添加新的长期项目
+@pkm project delete <project_name>  # 删除项目
+@pkm project ls             # 列出所有长期项目
 ```
 
 ### PKM 自管理
@@ -152,7 +152,7 @@ scope 值：
 调用 `_Verifier` 模块：
 
 - ✅ 定位知识库目录：`${DATA_HOME}`
-- ✅ 检查 `${DATA_HOME}` 中 **5 个顶级目录**（10_Projects/、20_Areas/、30_Resources/、40_Archives/、50_Raw/）是否存在且结构完整
+- ✅ 检查 `${DATA_HOME}` 中 **5 个顶级目录**（10_Tasks/、20_Areas/、30_Resources/、40_Archives/、50_Raw/）是否存在且结构完整
 - ✅ 确认操作范围白名单（限定在知识库目录内）
 - ✅ 生成写权限白名单（manual/ 只读）
 - 缺失目录则自动创建，然后继续
@@ -163,8 +163,8 @@ scope 值：
 
 **一键整理知识（无参数）**：
 - 执行 `@pkm`：主流程 `Verify → Archive → Organize → Distill`
-- 其中 Archive 阶段 = 调用 `@pkm project archive`（由 _ProjectManager 执行）
-- 对应可单独调用的子步骤：`@pkm verify`、`@pkm organize`、`@pkm distill`；归档仅通过 `@pkm project archive` 执行
+- 其中 Archive 阶段 = 调用 `@pkm task archive`（由 _TaskManager 执行，归档已完成任务并回流知识）
+- 对应可单独调用的子步骤：`@pkm verify`、`@pkm organize`、`@pkm distill`；任务归档通过 `@pkm task archive` 执行（自动扫描含 completed.md 的任务）
 
 **手动命令（带参数）**：
 
@@ -172,14 +172,14 @@ scope 值：
 - `inbox --parse <内容>` → `_Verifier` → `_Inbox`（先解析链接再捕获）
 - `advice <问题>` → `_Verifier` → `_Advisor`（默认模式：common + local）
 - `advice --scope <范围> <问题>` → `_Verifier` → `_Advisor`（指定范围）
-- `todo <操作>` → `_Verifier` → `_TodoManager`（任务管理）
-- `project <操作>` → `_Verifier` → `_ProjectManager`（项目管理，含归档）
+- `task <操作>` → `_Verifier` → `_TaskManager`（任务管理）
+- `project <操作>` → `_Verifier` → `_ProjectManager`（长期项目管理）
 - `organize` → `_Verifier` → `_Organizer`（组织分类）
 - `distill` → `_Verifier` → `_Distiller`（提炼知识）
 - `verify` → `_Verifier`（仅验证）
 - `status` → `_Verifier` → `_PkmSelfManager`（查看状态）
 - `upgrade` → `_PkmSelfManager`（更新版本）
-- `help` → 显示帮助信息
+- `help` → `_Help`（显示帮助信息）
 
 ### 3. 执行与报告
 
@@ -189,7 +189,7 @@ scope 值：
 
 ## 内部模块说明
 
-PKM 由 8 个内部模块组成，每个模块负责知识管理的一个环节（与 ARCHITECTURE 5.1 / 5.2 一致）：
+PKM 由 9 个内部模块组成，每个模块负责知识管理的一个环节（与 ARCHITECTURE 5.1 / 5.2 一致）：
 
 | 模块 | 职责 | 对应阶段 | 触发方式 |
 |------|------|---------|---------|
@@ -198,8 +198,9 @@ PKM 由 8 个内部模块组成，每个模块负责知识管理的一个环节�
 | `_Advisor` | 智能顾问 | Express | `@pkm advice` |
 | `_Organizer` | 智能组织器 | Organize | `@pkm organize` 或主流程 |
 | `_Distiller` | 知识提炼器 | Distill | `@pkm distill` 或主流程 |
-| `_ProjectManager` | 项目管理器（含归档） | Express | `@pkm project`，主流程中的 Archive 也由此执行 |
-| `_TodoManager` | 任务管理器 | 支撑 | `@pkm todo` |
+| `_ProjectManager` | 长期项目管理器 | 支撑 | `@pkm project`（add/delete/ls） |
+| `_TaskManager` | 任务管理器 | 支撑 | `@pkm task`（含 archive 归档回流） |
+| `_Help` | 帮助信息 | 支撑 | `@pkm help` |
 | `_PkmSelfManager` | 自管理器 | 支撑 | `@pkm status` / `@pkm upgrade` |
 
 ### 📋 _Verifier（范围守卫）
@@ -208,7 +209,7 @@ PKM 由 8 个内部模块组成，每个模块负责知识管理的一个环节�
 
 **触发**：每次操作前自动执行
 
-**检查范围**：`${DATA_HOME}` 下 5 个顶级目录（10_Projects/、20_Areas/、30_Resources/、40_Archives/、50_Raw/）存在且结构完整；不包含 skill（skill 位于 PKM 根目录）。
+**检查范围**：`${DATA_HOME}` 下 5 个顶级目录（10_Tasks/、20_Areas/、30_Resources/、40_Archives/、50_Raw/）存在且结构完整；不包含 skill（skill 位于 PKM 根目录）。
 
 **详细文档**：`_Verifier.md`
 
@@ -253,9 +254,9 @@ PKM 由 8 个内部模块组成，每个模块负责知识管理的一个环节�
 - 指定范围：`@pkm advice --scope <范围> <问题>`
   - `--scope common`：仅 AI 通用知识
   - `--scope local`：仅当前知识库
-  - `--scope 项目名`：仅指定项目知识库
+  - `--scope task` 或 `--scope <任务名>`：仅指定任务知识库
   - `--scope common,local`：AI 通用知识 + 当前知识库（默认）
-  - `--scope local,项目名`：当前知识库 + 项目知识库
+  - `--scope local,任务名`：当前知识库 + 指定任务知识库
 
 **前置要求**：⚠️ 必须先调用 `_Verifier` 验证环境
 
@@ -278,10 +279,11 @@ PKM 由 8 个内部模块组成，每个模块负责知识管理的一个环节�
 - 扫描 `50_Raw/`（包含 `inbox/` 和其他待分类素材）
 - **可选插件预处理**：若存在 `skill/plugin/SKILL.md`，先按内容类型匹配插件，命中则用对应 `template_<类型>.md` 模版整理，再继续分类
 - 按主题/类型合并同类内容到 `50_Raw/merged/`
-- 判断类型：任务/知识/资料，分类归位：
-  - 知识 → `20_Areas/03notes/<领域>/`（先放在 notes 层）
+- 判断类型（项目/知识/资料）和主题，分类归位：
+  - 项目 → `20_Areas/Projects/<项目名称>`（仅当有关联项目时）
+  - 知识 → `20_Areas/knowledge/03notes/<领域>/`（先放在 notes 层）
   - 资料 → `30_Resources/Library/`
-- 整理完清空 `50_Raw/`
+- 整理完清理已分类的文件，清空 `50_Raw/`
 
 **详细文档**：`_Organizer.md`
 
@@ -289,7 +291,7 @@ PKM 由 8 个内部模块组成，每个模块负责知识管理的一个环节�
 
 ### 💎 _Distiller（知识提炼器）
 
-**职责**：将 `20_Areas/03notes/` 中的零散知识按金字塔原理提炼成结构化知识
+**职责**：将 `20_Areas/knowledge/03notes/` 中的零散知识按金字塔原理提炼成结构化知识
 
 **对应阶段**：CODE 的 **Distill**
 
@@ -297,11 +299,12 @@ PKM 由 8 个内部模块组成，每个模块负责知识管理的一个环节�
 
 **核心功能**：
 
-- 扫描 `20_Areas/03notes/` 各领域目录
+- 扫描 `20_Areas/knowledge/03notes/` 各领域目录
 - 与已有知识深度整合（去重、交叉引用、结构化）
-- 按金字塔原理提炼：零散知识（notes）+ areas 区 manual 区（只读）→ 整理知识 → 应用知识（playbooks/templates/cases）→ 原则知识（principles）
+- 按金字塔原理提炼：零散知识（notes）+ 20_Areas/manual（只读）→ 整理知识 → 应用知识（knowledge/02playbooks/02templates/02cases）→ 原则知识（knowledge/01principles）
 - 沉淀到对应目录；系统性检查（一致性、过时性、冗余、逻辑合理性）
 - 总结提炼结果，生成报告到 `30_Resources/summary/`，格式 `YYYYMMDD_HHMMSS_标题_Distill.md`
+- **整理 Project 区内容**：扫描 `20_Areas/Projects/` 下所有项目，对每个项目内文件检查重复、冗余、一致性等问题，并进行整理（与方案 4.2 一致；规模过大时一次最多处理 20 个文件）
 
 **详细文档**：`_Distiller.md`
 
@@ -309,32 +312,38 @@ PKM 由 8 个内部模块组成，每个模块负责知识管理的一个环节�
 
 ### 📁 _ProjectManager（项目管理器）
 
-**职责**：管理项目目录（创建、列表、更新、完成、删除），以及归档已完成项目（知识回流 + 搬运到 40_Archives/）
+**职责**：管理 `20_Areas/Projects/` 下的长期项目（添加、删除、列表）
 
-**对应阶段**：CODE 的 **Express**（项目生命周期与归档）
+**对应阶段**：支撑任务与知识沉淀的长期项目容器
 
-**触发**：
-
-- `@pkm project add/ls/done/update/delete/archive` 等子命令
-- 主流程 `@pkm` 中的 Archive 阶段 = 调用 `@pkm project archive`，由本模块执行
+**触发**：`@pkm project add`、`@pkm project delete`、`@pkm project ls`
 
 **核心功能**：
 
-- 创建项目目录（格式 `YYYYMMDD_HHMMSS_项目名称`），列出项目（含 `ls --done` 查看已完成）
-- 更新项目进展（PROCESS_*.md），标记完成（生成 COMPLETED.md）
-- **归档**：扫描 `10_Projects/` 中已存在 `COMPLETED.md` 的项目，将项目整体移至 `40_Archives/`，基于 COMPLETED.md 提取可复用知识与资料统一放置到 `50_Raw/`
+- 在 20_Areas/Projects/ 下添加新长期项目、删除项目、列出所有长期项目
+- 项目目录格式可为 `01_xxx` 等（以宪章 2.4 为准）
 
 **详细文档**：`_ProjectManager.md`
 
 ---
 
-### 📋 _TodoManager（任务管理器）
+### 📋 _Help（帮助信息）
 
-**职责**：管理待办任务，支持 4 象限管理；add/ls/edit/update/done/delete；写入 `30_Resources/todo.md`，归档到 `todo_archive.md`
+**职责**：显示完整帮助信息，包括所有命令列表、使用示例、数据存储路径等
 
-**触发**：`@pkm todo <子命令>`
+**触发**：`@pkm help`
 
-**详细文档**：`_TodoManager.md`
+**详细文档**：`_Help.md`
+
+---
+
+### 📋 _TaskManager（任务管理器）
+
+**职责**：管理任务，支持 4 象限管理；add/ls/use/edit/update/done/delete/archive；任务工作空间 `10_Tasks/TASK_WORKSPACE_YYYYMMDD_HHMMSS_xxx/`，任务数据 `task.md`；archive 时回流知识到 20_Areas/knowledge/ 与 20_Areas/Projects/
+
+**触发**：`@pkm task <子命令>`
+
+**详细文档**：`_TaskManager.md`
 
 ---
 
@@ -344,7 +353,7 @@ PKM 由 8 个内部模块组成，每个模块负责知识管理的一个环节�
 
 **触发**：`@pkm status`、`@pkm upgrade`
 
-**status**：输出配置文件（`~/.pkm/.config`）、数据目录位置、知识库数量概况、项目列表（可引用 `@pkm project ls` 与 `@pkm project ls --done`）、任务列表（可引用 `@pkm todo ls` 与 `@pkm todo ls --done`）、PKM 版本、上次 pkm 执行时间、上次 pkm 总结报告简述（不超过 100 字）。
+**status**：输出配置文件（`~/.pkm/.config`）、数据目录位置、知识库数量概况、长期项目列表（引用 `@pkm project ls`）、任务列表（引用 `@pkm task ls` 与 `@pkm task ls --all`）、PKM 版本、上次 pkm 执行时间、上次 pkm 总结报告简述（不超过 100 字）。
 
 **upgrade**：在 PKM 安装目录（默认 `~/.pkm`）执行 `git pull`，更新 skill 与 command。
 
@@ -363,17 +372,17 @@ PKM 由 8 个内部模块组成，每个模块负责知识管理的一个环节�
 # 输出示例：
 ✅ Verifier 验证通过
 
-🗄️ 检测到 1 个项目已完成
-🔄 执行 @pkm project archive（ProjectManager）...
-  └─ 归档到 40_Archives/，知识回流到 50_Raw/ ✅
+🗄️ 检测到已完成任务
+🔄 执行 @pkm task archive（TaskManager）...
+  └─ 知识回流到 20_Areas/knowledge/ 与 20_Areas/Projects/，任务移至 40_Archives/ ✅
 
 📦 检测到 50_Raw/ 有 8 个文件
 🔄 执行 Organizer...
   ├─ 合并同类内容到 50_Raw/merged/
-  ├─ 知识 → Areas/03notes: 5 个
+  ├─ 知识 → 20_Areas/knowledge/03notes: 5 个
   └─ 50_Raw/ 已清空 ✅
 
-💎 检测到 20_Areas/03notes/01_react/ 有新增
+💎 检测到 20_Areas/knowledge/03notes/01_react/ 有新增
 🔄 执行 Distiller...
   └─ 报告 → 30_Resources/summary/YYYYMMDD_HHMMSS_知识提炼报告_Distill.md ✅
 
@@ -405,8 +414,8 @@ PKM 由 8 个内部模块组成，每个模块负责知识管理的一个环节�
 ### 双重防火墙
 
 1. **内部防火墙**：受保护区 vs AI 可写区
-   - AI 可写：`20_Areas/03notes/`、`02playbooks/`、`02templates/`、`02cases/`、`01principles/`、`10_Projects/*/`（排除 manual/）、`50_Raw/`、`30_Resources/Library/`、`40_Archives/`
-   - AI **只读**：`20_Areas/manual/`、`10_Projects/*/manual/`，绝不直接修改
+   - AI 可写：`20_Areas/knowledge/`（03notes、02playbooks、02templates、02cases、01principles）、`10_Tasks/`、`20_Areas/Projects/`、`50_Raw/`、`30_Resources/Library/`、`40_Archives/`
+   - AI **只读**：`20_Areas/manual/`，绝不直接修改
 
 2. **外部防火墙**：知识库内 vs 知识库外
    - Verifier 强制检查目录结构，操作仅限 `${DATA_HOME}` 内
@@ -415,9 +424,9 @@ PKM 由 8 个内部模块组成，每个模块负责知识管理的一个环节�
 ### 白名单机制
 
 **可写区域**（AI 可以创建/修改/删除文件）：
-`50_Raw/`、`10_Projects/*/`（排除 manual/）、`20_Areas/03notes/`、`02playbooks/`、`02templates/`、`02cases/`、`01principles/`、`30_Resources/Library/`、`40_Archives/`
+`50_Raw/`、`10_Tasks/`（任务工作空间）、`20_Areas/knowledge/`（03notes、02playbooks、02templates、02cases、01principles）、`20_Areas/Projects/`、`30_Resources/Library/`、`40_Archives/`
 
-**只读区域**：`20_Areas/manual/`、`10_Projects/*/manual/`、`skill/`
+**只读区域**：`20_Areas/manual/`、`skill/`
 
 **禁止区域**：知识库根目录（DATA_HOME）外的任何路径
 
@@ -444,7 +453,7 @@ PKM 由 8 个内部模块组成，每个模块负责知识管理的一个环节�
 ### 问题：文件被标记为「待确认」
 
 **原因**：Organizer 无法判断文件类型。
-**解决**：人工判断类型后，将文件移动到正确位置（如 `20_Areas/03notes/<领域>/` 或 `30_Resources/Library/`）。
+**解决**：人工判断类型后，将文件移动到正确位置（如 `20_Areas/knowledge/03notes/<领域>/` 或 `30_Resources/Library/`）。
 
 ### 问题：草稿质量差
 
@@ -462,7 +471,7 @@ PKM 由 8 个内部模块组成，每个模块负责知识管理的一个环节�
 ```text
 @pkm organize              # 只执行组织分类（处理 50_Raw/）
 @pkm distill               # 只执行提炼（处理 20_Areas/03notes/）
-@pkm project archive       # 只执行归档（扫描已完成项目，回流知识并搬运到 40_Archives/）
+@pkm task archive          # 归档所有已完成任务（扫描含 completed.md 的，回流知识并搬运到 40_Archives/）
 @pkm verify                # 只验证知识库结构
 ```
 

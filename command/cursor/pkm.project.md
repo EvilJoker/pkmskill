@@ -1,6 +1,6 @@
 # /pkm.project
 
-> 管理项目目录
+> 长期项目管理（与 `docs/ARCHITECTURE.md` 3 一致）：管理 20_Areas/Projects/
 
 ## 路由执行
 
@@ -12,16 +12,12 @@
 
 | 命令 | 功能 |
 |------|------|
-| `/pkm.project add <名称>` | 创建项目 |
-| `/pkm.project ls` | 列出项目 |
-| `/pkm.project ls --done` | 列出已完成项目 |
-| `/pkm.project done <项目名>` | 标记完成 |
-| `/pkm.project update <项目名>` | 更新进展 |
-| `/pkm.project delete <项目名>` | 删除项目 |
-| `/pkm.project archive` | 归档项目 |
+| `/pkm.project add <名称>` | 在 20_Areas/Projects/ 添加新的长期项目 |
+| `/pkm.project delete <project_name>` | 删除项目 |
+| `/pkm.project ls` | 列出所有长期项目 |
 
 ## 相关命令
 
 - `/pkm` - 主流程
-- `/pkm.todo` - 任务管理
+- `/pkm.task` - 任务管理
 - `/pkm.help` - 帮助

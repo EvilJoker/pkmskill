@@ -95,7 +95,7 @@ install_cursor() {
         return 1
     fi
 
-    # 安装 Commands
+    # 安装 Commands（与 docs/ARCHITECTURE.md 6.4 一致：pkm.md, pkm.inbox.md, pkm.advice.md, pkm.help.md, pkm.task.md, pkm.project.md, pkm.status.md, pkm.upgrade.md）
     local cmd_dir="${cursor_dir}/commands"
     mkdir -p "$cmd_dir"
     for cmd in "${pkm_home}"/command/cursor/*.md; do
@@ -277,14 +277,16 @@ echo -e "${BLUE}[2/3]${NC} 创建目录结构..."
 mkdir -p "${PKM_HOME}/data"
 cd "${PKM_HOME}/data"
 
+# 与 docs/ARCHITECTURE.md 2.4 data 目录一致：10_Tasks、20_Areas（含 Projects、knowledge）、30_Resources、40_Archives、50_Raw
 DIRS=(
-    "10_Projects"
+    "10_Tasks"
+    "20_Areas/Projects"
     "20_Areas/manual"
-    "20_Areas/01principles"
-    "20_Areas/02playbooks"
-    "20_Areas/02templates"
-    "20_Areas/02cases"
-    "20_Areas/03notes"
+    "20_Areas/knowledge/01principles"
+    "20_Areas/knowledge/02playbooks"
+    "20_Areas/knowledge/02templates"
+    "20_Areas/knowledge/02cases"
+    "20_Areas/knowledge/03notes"
     "30_Resources/Library"
     "30_Resources/summary"
     "40_Archives"
@@ -295,9 +297,6 @@ DIRS=(
 for dir in "${DIRS[@]}"; do
     mkdir -p "$dir"
 done
-
-touch 30_Resources/todo.md
-touch 30_Resources/todo_archive.md
 
 echo -e "      ${GREEN}✓${NC} 目录结构已创建"
 echo ""

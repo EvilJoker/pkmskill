@@ -57,7 +57,7 @@
 1. 🧹 **自整理、自清洁、自进化**
    系统自动完成归档、合并、分类、提炼，知识按金字塔从零散沉淀到原则，无需你反复动手整理；随使用持续更新，越用越有序。
 2. 📋 **管理日常任务，自行记忆与总结**
-   用 todo 与项目结构管理待办和进行中的事；AI 帮你做记忆（落在 inbox/notes）、做总结（Distill 报告、完成复盘），你只需做决策和纠偏。
+   用 task 与项目结构管理待办和进行中的事；AI 帮你做记忆（落在 inbox/notes）、做总结（Distill 报告、完成复盘），你只需做决策和纠偏。
 3. 🤖 **为 AI 提供私域知识**
    你的笔记、项目、领域知识统一落在 PARA 结构中，通过 `@pkm advice` 等能力被检索与调用，让 AI 在回答和建议时基于**你的私域知识**，而不是仅用通用语料。
 
@@ -99,7 +99,7 @@ flowchart LR
 
 PARA 解决「东西放在哪」的顶层划分：
 
-- 🏗️ **10_Projects（项目）**：有明确截止日期的任务，偏执行。
+- 🏗️ **10_Tasks（项目）**：有明确截止日期的任务，偏执行。
 - 🧠 **20_Areas（领域）**：长期负责的方向，偏知识沉淀。
 - 📚 **30_Resources（资源）**：感兴趣但还没深加工的素材，如文档、链接。
 - 🗄️ **40_Archives（归档）**：已完成的项目、已不活跃的领域，只保留不常动。
@@ -108,7 +108,7 @@ PARA 解决「东西放在哪」的顶层划分：
 ```mermaid
 flowchart TB
     subgraph PARA["PARA 顶层结构"]
-        P["10_Projects<br/>有截止日期·执行"]
+        P["10_Tasks<br/>有截止日期·执行"]
         A["20_Areas<br/>长期领域·沉淀"]
         R["30_Resources<br/>资料·待加工"]
         Ar["40_Archives<br/>已完成·归档"]
@@ -150,30 +150,32 @@ flowchart TB
 
 ```text
 .
-├── 🏗️ 10_Projects/               # 【P】活跃项目（聚焦任务执行）
-│   ├── YYYYMMDD_HHMMSS_XXX/     # 项目目录（时间戳_XXX 格式）
-│   │   └── manual/              # 受保护区：项目金标准、架构决策（AI 只读，人工维护）
+├── 🏗️ 10_Tasks/               # 【P】活跃任务（聚焦任务执行）
+│   ├── tasks.md                 # 任务清单索引（四象限）
+│   ├── tasks_archive.md         # 已完成任务清单
+│   ├── TASK_WORKSPACE_YYYYMMDD_HHMMSS_XXX/   # 任务工作区（时间戳_XXX 格式）
+│   │   └── task.md              # 任务详细数据；完成后生成 completed.md
 │   └── ...
 │
 ├── 🧠 20_Areas/                  # 【A】长期领域（聚焦知识沉淀，按金字塔流动）
+│   ├── Projects/                # 长期项目（@pkm project 管理）
 │   ├── manual/                  # 受保护区：全域共用素材区（AI 只读，人工按需删除/更新）
-│   ├── 01principles/            # 顶层原则层：方法论、原则、框架
-│   ├── 02playbooks/             # 上层应用层：标准化流程（SOP、操作手册）
-│   ├── 02templates/             # 上层应用层：可复用的模版和格式
-│   ├── 02cases/                 # 上层应用层：具体案例和实例
-│   └── 03notes/                 # 中层整理知识：按领域分类
-│       ├── 01_python/           # Python 领域知识
-│       ├── 02_算法设计/          # 算法设计领域知识
-│       └── ...                  # 其他领域知识
+│   └── knowledge/               # 知识区
+│       ├── 01principles/        # 顶层原则层：方法论、原则、框架
+│       ├── 02playbooks/         # 上层应用层：标准化流程（SOP、操作手册）
+│       ├── 02templates/         # 上层应用层：可复用的模版和格式
+│       ├── 02cases/             # 上层应用层：具体案例和实例
+│       └── 03notes/             # 中层整理知识：按领域分类
+│           ├── 01_python/       # Python 领域知识
+│           ├── 02_算法设计/      # 算法设计领域知识
+│           └── ...              # 其他领域知识
 │
 ├── 📚 30_Resources/              # 【R】原材料（聚焦第三方资料与文档）
 │   ├── Library/                 # 静态资料库（PDF、电子书、参考文档）
-│   ├── todo.md                  # 待办任务列表
-│   ├── todo_archive.md          # 已完成任务归档
 │   └── summary/                 # 提炼报告输出目录
 │
 ├── 🗄️ 40_Archives/               # 【A】归档区
-│   ├── YYYYMMDD_HHMMSS_XXX/     # 归档项目目录（时间戳_XXX 格式，保留完整结构）
+│   ├── TASK_WORKSPACE_YYYYMMDD_HHMMSS_XXX/   # 归档任务工作区（保留完整结构）
 │   └── ...
 │
 └── 📥 50_Raw/                    # 【Raw】统一素材区（整理后应清空）
@@ -184,10 +186,10 @@ flowchart TB
 
 **简要说明**：
 
-- 🏗️ **10_Projects**：每个项目一个 `YYYYMMDD_HHMMSS_XXX` 目录，内有 `manual/`（金标准、架构决策，AI 只读）。
-- 🧠 **20_Areas**：`manual/` 共用；`01principles/`、`02playbooks/`、`02templates/`、`02cases/`、`03notes/<领域>/` 对应金字塔各层。
-- 📚 **30_Resources**：`Library/` 放资料，`todo.md` / `todo_archive.md` 管待办，`summary/` 放提炼报告。
-- 🗄️ **40_Archives**：按年归档已完成项目，目录结构原样保留。
+- 🏗️ **10_Tasks**：`tasks.md` 为任务清单索引，`tasks_archive.md` 为已完成任务；每个任务有独立工作区 `TASK_WORKSPACE_*/`，内设 `task.md`，完成后生成 `completed.md`。
+- 🧠 **20_Areas**：`manual/` 共用；`knowledge/` 下 `01principles/`、`02playbooks/`、`02templates/`、`02cases/`、`03notes/<领域>/` 对应金字塔各层；`Projects/` 为长期项目。
+- 📚 **30_Resources**：`Library/` 放资料，`summary/` 放提炼报告。
+- 🗄️ **40_Archives**：归档已完成任务的工作区目录，结构原样保留。
 - 📥 **50_Raw**：`inbox/` 是捕获落点，`merged/` 是合并后、待分类的中间结果，整理完会清空。
 
 ---
@@ -219,7 +221,7 @@ flowchart TD
 **大致步骤**：
 
 1. 你输入内容（文字或链接）。
-2. 若内容像「任务」（有动词、时间、目标），会建议改用 `@pkm todo`。
+2. 若内容像「任务」（有动词、时间、目标），会建议改用 `@pkm task`。
 3. 若不是任务，AI 做简短总结并生成 5～10 字标题。
 4. 链接默认当引用；加 `--online` 可抓取网页内容。
 5. 保存为：`50_Raw/inbox/YYYYMMDD_HHMMSS_标题_inbox.md`。
@@ -232,23 +234,23 @@ flowchart TD
 
 🔍 **Verify（前置安全检查）**：
 
-- 检查 6 个顶级目录（10_Projects、20_Areas、30_Resources、40_Archives、50_Raw、.pkm）是否存在、结构是否完整。
+- 检查 5 个顶级目录（10_Tasks、20_Areas、30_Resources、40_Archives、50_Raw）是否存在、结构是否完整。
 - 限定操作范围在白名单内；`manual/` 只读。
 - 任一检查失败则中止，不执行后续步骤。
 
 🗄️ **Archive（归档与回流）**：
 
-- 扫描 `10_Projects/`，找出带 `COMPLETED.md` 的项目。
-- 整项目移动到 `40_Archives/<年份>/`，保留目录结构。
-- 从这些项目中抽取可复用知识（含 manual 区），写入 `50_Raw/`，参与后续 Organize/Distill。
+- 扫描 `10_Tasks/` 下所有任务工作区，找出带 `completed.md` 的（表示已完成）。
+- 按 `completed.md` 抽取可复用知识 → `20_Areas/knowledge/`、`20_Areas/Projects/<项目名>/`。
+- 将任务工作区目录移至 `40_Archives/`，保留完整结构。
 
 📦 **Organize（组织分类）**：
 
 - 扫描 `50_Raw/`（含 inbox 及其他待分类文件）。
 - 按主题/类型合并到 `50_Raw/merged/`。
-- 判断是「任务 / 知识 / 资料」并归位：
-  - 任务 → `10_Projects/`
-  - 知识 → `20_Areas/03notes/<领域>/`
+- 判断是「项目/知识/资料」并归位：
+  - 项目相关 → `20_Areas/Projects/<项目名称>/`
+  - 知识 → `20_Areas/knowledge/03notes/<领域>/`
   - 资料 → `30_Resources/Library/`
 - 归位完成后清空 `50_Raw/`。
 
@@ -275,8 +277,8 @@ flowchart TD
 **scope 含义**：
 
 - `common`：只用 AI 通用知识。
-- `local`：只查当前知识库（10_Projects、20_Areas、30_Resources、40_Archives）。
-- `<项目名>`：只查 `10_Projects/<项目名>/`。
+- `local`：只查当前知识库（10_Tasks、20_Areas、30_Resources、40_Archives）。
+- `task`：只查指定任务知识库。
 - 不写时默认：common + local。
 
 ```mermaid
@@ -284,37 +286,39 @@ flowchart LR
     Q["你的问题"] --> S{--scope?}
     S -->|common| Common["仅 AI 通用知识"]
     S -->|local| Local["仅本库"]
-    S -->|项目名| Proj["指定项目"]
+    S -->|task| Task["指定任务"]
     S -->|默认| Both["common + local"]
     Common --> Ans["回答与建议"]
     Local --> Ans
-    Proj --> Ans
+    Task --> Ans
     Both --> Ans
 ```
 
-### ✅ 5.5 Todo 与项目（扩展流程）
+### ✅ 5.5 任务与长期项目（扩展流程）
 
-**命令**：`@pkm todo [操作] [参数]`
+**命令**：`@pkm task [操作] [参数]`
 
 **常用操作**：
 
-- `@pkm todo add <内容>` 或 `@pkm todo add`：新增任务（可交互补全：想法、四象限、计划、实现思路、关联项目）。
-- `@pkm todo list`：按四象限列出任务，支持筛选；并做进展核查与延期风险提示，提醒及时处理。
-- `@pkm todo update <id/名称>`：更新进展（会记录日期和一句话进展）。
-- `@pkm todo ok <id/名称>`：标记完成（会问总结、收益、价值评分，并归档到 todo_archive.md）。
-- `@pkm todo del <id/名称>`：删除任务。
+- `@pkm task add <内容>`：添加任务（可交互补全：想法、四象限、计划、实现思路、关联项目）；自动创建任务工作区与 task.md，并写入 tasks.md 索引。
+- `@pkm task ls`：按四象限列出任务，支持 `ls --all` 含已归档；含进展核查与延期风险提示。
+- `@pkm task update <id>`：更新进展（会记录日期和一句话进展）。
+- `@pkm task done <id>`：标记完成（会问总结、收益、价值评分，生成 completed.md，并写入 tasks_archive.md）。
+- `@pkm task archive`：自动扫描所有含 completed.md 的任务工作区，回流知识到 20_Areas，并将工作区移至 40_Archives/。
+- `@pkm task delete <id>`：删除任务。
 
 **四象限**：重要且紧急 / 重要不紧急 / 不重要但紧急 / 不重要不紧急，用于排序和取舍。
 
-**新建项目**：`@pkm addProject` — 在 `10_Projects/` 下创建 `YYYYMMDD_HHMMSS_XXX` 目录，并初始化 `manual/` 等结构。
+**长期项目**：`@pkm project add <名称>` — 在 `20_Areas/Projects/` 下创建长期项目目录，任务可关联到项目。
 
 ```mermaid
 flowchart TB
-    subgraph Todo["Todo 流程"]
-        Add["todo add"] --> List["todo list"]
-        List --> Update["todo update"]
-        Update --> OK["todo ok → todo_archive.md"]
-        Del["todo del"]
+    subgraph Task["Task 流程"]
+        Add["task add"] --> List["task ls"]
+        List --> Update["task update"]
+        Update --> Done["task done → completed.md"]
+        Done --> Archive["task archive → 40_Archives/"]
+        Del["task delete"]
     end
 ```
 
@@ -332,11 +336,12 @@ flowchart TB
 | ---------------- | ---------------------------------------------------- | ------------------------------------------------- |
 | 记一条想法/链接  | `@pkm inbox <内容>`                                | 写入 50_Raw/inbox/，可加 `--online` 抓网页      |
 | 做一次完整整理   | `@pkm`                                             | 顺序执行 Verify → Archive → Organize → Distill |
-| 基于知识库问答   | `@pkm advice <问题> [--scope common\|local\|项目名]` | 不写 scope 时用 common+local                      |
-| 加一条待办       | `@pkm todo add [内容]` 或 `@pkm todo add`        | 可交互补全四象限、计划等                          |
-| 看所有待办       | `@pkm todo list`                                   | 按四象限展示、可筛选；含进展核查与延期风险提示    |
-| 更新/完成/删任务 | `@pkm todo update/ok/del <id或名称>`               | ok 会写总结并归档                                 |
-| 建新项目目录     | `@pkm addProject`                                  | 在 10_Projects 下生成时间戳_XXX 目录              |
+| 基于知识库问答   | `@pkm advice <问题> [--scope common\|local\|task]`   | 不写 scope 时用 common+local                      |
+| 添加任务         | `@pkm task add <内容>`                             | 可交互补全四象限、计划等，写入 tasks.md 索引      |
+| 看所有任务       | `@pkm task ls`                                     | 按四象限展示，`ls --all` 含已归档；含进展核查与延期风险提示 |
+| 更新/完成/删任务 | `@pkm task update/done/delete <id>`                 | done 生成 completed.md 并写入 tasks_archive.md   |
+| 归档已完成任务   | `@pkm task archive`                                | 自动扫描含 completed.md 的工作区，回流知识并移至 40_Archives/ |
+| 添加长期项目     | `@pkm project add <名称>`                          | 在 20_Areas/Projects/ 下创建                     |
 | 查看帮助         | `@pkm help`                                        | 显示命令与用法                                    |
 
 ```mermaid
@@ -346,8 +351,8 @@ flowchart LR
         PKM --> PM["无参数 → 主流程"]
         PKM --> In["inbox → 捕获"]
         PKM --> Ad["advice → 咨询"]
-        PKM --> Todo["todo → 待办"]
-        PKM --> AddP["addProject → 新建项目"]
+        PKM --> Task["task → 任务"]
+        PKM --> Proj["project → 长期项目"]
         PKM --> H["help → 帮助"]
     end
 ```
@@ -362,12 +367,12 @@ flowchart LR
 | ------------------- | ---------------------- | ----------------------------------------- |
 | 任意操作前          | `_Verifier.md`       | 检查目录、缺失则自动创建，范围与 manual 只读 |
 | `@pkm inbox`      | `_Inbox.md`          | 生成原子笔记到 50_Raw/inbox/              |
-| `@pkm` 主流程     | `_Archiver.md`       | 归档完成项目，抽可复用知识到 50_Raw       |
+| `@pkm` 主流程     | `_TaskManager.md`（task archive） | 归档已完成任务，回流知识到 20_Areas       |
 | `@pkm` 主流程     | `_Organizer.md`      | 合并、分类、归位，清空 50_Raw             |
 | `@pkm` 主流程     | `_Distiller.md`      | 整合、金字塔提炼、检查、写报告            |
 | `@pkm advice`     | `_Advisor.md`        | 按 scope 检索并回答                       |
-| `@pkm addProject` | `_ProjectCreator.md` | 创建项目目录与 manual                     |
-| `@pkm todo`       | `_TodoManager.md`    | 维护 todo.md / todo_archive.md、四象限    |
+| `@pkm project add` | `_ProjectManager.md` | 在 20_Areas/Projects/ 下创建长期项目       |
+| `@pkm task`        | `_TaskManager.md`    | 维护 tasks.md / tasks_archive.md、任务工作区与 task.md、四象限 |
 
 **设计要点**：单一职责、统一从 `SKILL.md` 路由、先 Verify 再执行、主流程 = Verify → Archive → Organize → Distill 的组合，和「相信 AI、渐进提炼」一致。
 
@@ -383,9 +388,9 @@ flowchart LR
 1. 📥 用 `@pkm inbox` 随便记几条想法或链接，确认 `50_Raw/inbox/` 里能看到文件。
 2. 🔄 跑一次 `@pkm`，看 Verify → Archive → Organize → Distill 的日志或结果，并到 `30_Resources/summary/` 看是否生成了 Distill 报告。
 3. 💬 用 `@pkm advice` 问一个和现有笔记相关的问题，试一下不加 scope 和加 `--scope local` 的差别。
-4. ✅ 用 `@pkm todo add` 建一两条任务，再用 `@pkm todo list` 和 `@pkm todo ok` 走一遍完成与归档。
+4. ✅ 用 `@pkm task add` 建一两条任务，再用 `@pkm task ls` 和 `@pkm task done` 走一遍完成，最后用 `@pkm task archive` 或主流程 `@pkm` 归档。
 
-完成以上后，你就已经走通了「捕获 → 整理 → 咨询 → 任务」的完整链路，后续可以按需多练 inbox + 主流程，再逐步用 advice 和 todo 配合自己的工作节奏。
+完成以上后，你就已经走通了「捕获 → 整理 → 咨询 → 任务」的完整链路，后续可以按需多练 inbox + 主流程，再逐步用 advice 和 task 配合自己的工作节奏。
 
 ---
 
