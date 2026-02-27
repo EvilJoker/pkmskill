@@ -1,0 +1,43 @@
+{
+  "taskId": "T-20260228-000001",
+  "title": "示例任务：测试 PKM Agent",
+  "description": "这是一个示例任务契约，用于演示契约文件格式",
+  "status": "pending",
+  "priority": "high",
+  "tags": ["test", "pkm", "agent"],
+  "createdAt": "2026-02-28T00:00:00Z",
+  "updatedAt": "2026-02-28T00:00:00Z",
+  
+  "execution": {
+    "command": "echo 'Hello from PKM Agent!' && sleep 5 && echo 'Task completed'",
+    "workdir": "/home/10312862@zte.intra/.pkm",
+    "env": {
+      "TEST_VAR": "test_value"
+    },
+    "timeout": 3600,
+    "shell": "/bin/bash"
+  },
+  
+  "agent": {
+    "heartbeatPath": "/home/10312862@zte.intra/.pkm/heartbeat/T-20260228-000001.heartbeat",
+    "maxRetries": 3,
+    "retryCount": 0,
+    "lastRunTime": null,
+    "runHistory": []
+  },
+  
+  "result": {
+    "exitCode": null,
+    "output": null,
+    "error": null,
+    "completedAt": null,
+    "duration": null
+  },
+  
+  "pkm": {
+    "project": "个人知识库pkm",
+    "knowledgeFiles": [],
+    "outputLocation": "20_Areas/knowledge/03notes/",
+    "autoDistill": true
+  }
+}

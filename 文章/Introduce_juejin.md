@@ -73,6 +73,7 @@
 - ⚡ **简单至上**：流程和操作尽量少，核心机制简单好记。
 - 🤖 **相信 AI**：判断和分类交给 AI，你主要负责后期纠偏，保证自动化可执行。
 - 📈 **渐进提炼**：从碎片到知识、从知识到经验，是一步步提炼出来的，而不是一步到位。
+- ✅ **任务驱动**：任务是工作的最小单元，任务结束需要知识回流，保证任务和知识库不割裂。
 
 ### 🔄 3.2 CODE 信息管理法则
 
@@ -99,8 +100,8 @@ flowchart LR
 
 PARA 解决「东西放在哪」的顶层划分：
 
-- 🏗️ **10_Tasks（项目）**：有明确截止日期的任务，偏执行。
-- 🧠 **20_Areas（领域）**：长期负责的方向，偏知识沉淀。
+- 🏗️ **10_Tasks（任务）**：有明确截止日期的任务，聚焦任务执行。
+- 🧠 **20_Areas（领域）**：长期负责的方向，聚焦知识沉淀。
 - 📚 **30_Resources（资源）**：感兴趣但还没深加工的素材，如文档、链接。
 - 🗄️ **40_Archives（归档）**：已完成的项目、已不活跃的领域，只保留不常动。
 - 📥 **50_Raw（素材区）**：统一的「待处理入口」，含 inbox 和未分类碎片，整理完应清空。
@@ -141,6 +142,20 @@ flowchart TB
         L4 --> L3 --> L2 --> L1
     end
 ```
+
+### ✅ 3.5 任务驱动与知识回流（核心）
+
+**任务驱动是知识回流的主要手段**，确保任务执行过程中产生的知识能够沉淀到知识库：
+
+- 📌 **Task（任务）**：短期工作单元，有明确截止日期的目标，每个 Task 有独立的工作空间
+- 📌 **Project（项目）**：长期维护的领域，存放在 `20_Areas/Projects/`
+- 🔄 **知识回流**：任务完成时（`@pkm task done`），会生成 `completed.md` 记录总结与收益，通过 `@pkm task archive` 自动将知识沉淀到 `20_Areas/knowledge/` 和 `20_Areas/Projects/<项目名>/`
+- 🎯 **闭环保障**：保证任务和知识库不割裂，形成完整的知识循环
+
+**为什么任务驱动如此重要**：
+- 任务执行过程中产生的经验、踩坑记录、解决方案是最有价值的知识
+- 通过任务闭环将这些知识自然回流到知识库，而非额外花时间整理
+- 长期项目依赖任务知识的不断积累，逐步形成完整的项目知识体系
 
 ---
 
@@ -223,7 +238,7 @@ flowchart TD
 1. 你输入内容（文字或链接）。
 2. 若内容像「任务」（有动词、时间、目标），会建议改用 `@pkm task`。
 3. 若不是任务，AI 做简短总结并生成 5～10 字标题。
-4. 链接默认当引用；加 `--online` 可抓取网页内容。
+4. 链接默认当引用；加 `--parse` 可抓取网页内容。
 5. 保存为：`50_Raw/inbox/YYYYMMDD_HHMMSS_标题_inbox.md`。
 
 **效果**：想到就记，不纠结路径和命名。
@@ -300,14 +315,19 @@ flowchart LR
 
 **常用操作**：
 
-- `@pkm task add <内容>`：添加任务（可交互补全：想法、四象限、计划、实现思路、关联项目）；自动创建任务工作区与 task.md，并写入 tasks.md 索引。
+- `@pkm task add <内容>`：添加任务（可交互补全：想法、四象限、计划、工作量、实现思路、关联项目）；自动创建任务工作区与 task.md，并写入 tasks.md 索引。
 - `@pkm task ls`：按四象限列出任务，支持 `ls --all` 含已归档；含进展核查与延期风险提示。
+- `@pkm task use <id>`：切换到指定任务，后续操作默认在该任务上下文执行。
 - `@pkm task update <id>`：更新进展（会记录日期和一句话进展）。
 - `@pkm task done <id>`：标记完成（会问总结、收益、价值评分，生成 completed.md，并写入 tasks_archive.md）。
 - `@pkm task archive`：自动扫描所有含 completed.md 的任务工作区，回流知识到 20_Areas，并将工作区移至 40_Archives/。
 - `@pkm task delete <id>`：删除任务。
 
 **四象限**：重要且紧急 / 重要不紧急 / 不重要但紧急 / 不重要不紧急，用于排序和取舍。
+
+**任务与项目的区别**：
+- **Task（任务）**：短期工作单元，有明确截止日期，每个 Task 有独立的工作空间 `TASK_WORKSPACE_YYYYMMDD_HHMMSS_xxx/`
+- **Project（项目）**：长期维护的领域，存放在 `20_Areas/Projects/`，Task 完成后可回流到对应项目
 
 **长期项目**：`@pkm project add <名称>` — 在 `20_Areas/Projects/` 下创建长期项目目录，任务可关联到项目。
 
@@ -334,11 +354,12 @@ flowchart TB
 
 | 场景             | 命令                                                 | 说明                                              |
 | ---------------- | ---------------------------------------------------- | ------------------------------------------------- |
-| 记一条想法/链接  | `@pkm inbox <内容>`                                | 写入 50_Raw/inbox/，可加 `--online` 抓网页      |
+| 记一条想法/链接  | `@pkm inbox <内容>`                                | 写入 50_Raw/inbox/，可加 `--parse` 抓网页      |
 | 做一次完整整理   | `@pkm`                                             | 顺序执行 Verify → Archive → Organize → Distill |
 | 基于知识库问答   | `@pkm advice <问题> [--scope common\|local\|task]`   | 不写 scope 时用 common+local                      |
-| 添加任务         | `@pkm task add <内容>`                             | 可交互补全四象限、计划等，写入 tasks.md 索引      |
+| 添加任务         | `@pkm task add <内容>`                             | 可交互补全四象限、计划、工作量等，写入 tasks.md 索引      |
 | 看所有任务       | `@pkm task ls`                                     | 按四象限展示，`ls --all` 含已归档；含进展核查与延期风险提示 |
+| 切换任务上下文   | `@pkm task use <id>`                               | 切换到指定任务，后续操作默认在该任务上下文执行 |
 | 更新/完成/删任务 | `@pkm task update/done/delete <id>`                 | done 生成 completed.md 并写入 tasks_archive.md   |
 | 归档已完成任务   | `@pkm task archive`                                | 自动扫描含 completed.md 的工作区，回流知识并移至 40_Archives/ |
 | 添加长期项目     | `@pkm project add <名称>`                          | 在 20_Areas/Projects/ 下创建                     |
@@ -361,7 +382,7 @@ flowchart LR
 
 ## 🔧 七、流程与实现模块对应（进阶）
 
-若要理解「每个流程是谁在干活」，可对应到 `.pkm/Skills/PKM/` 下的 Skill 文件：
+若要理解「每个流程是谁在干活」，可对应到 `.pkm/Skill/` 下的 Skill 文件：
 
 | 你用的命令/动作     | 对应的 Skill 文件      | 主要职责                                  |
 | ------------------- | ---------------------- | ----------------------------------------- |
@@ -373,6 +394,9 @@ flowchart LR
 | `@pkm advice`     | `_Advisor.md`        | 按 scope 检索并回答                       |
 | `@pkm project add` | `_ProjectManager.md` | 在 20_Areas/Projects/ 下创建长期项目       |
 | `@pkm task`        | `_TaskManager.md`    | 维护 tasks.md / tasks_archive.md、任务工作区与 task.md、四象限 |
+| `@pkm help`        | `_Help.md`           | 显示帮助信息                              |
+
+**Plugin 机制（可选）**：Organize 阶段支持插件预处理，按内容类型（如故障总结、会议纪要）用自定义模版做结构化整理。
 
 **设计要点**：单一职责、统一从 `SKILL.md` 路由、先 Verify 再执行、主流程 = Verify → Archive → Organize → Distill 的组合，和「相信 AI、渐进提炼」一致。
 
@@ -397,4 +421,4 @@ flowchart LR
 **延伸与链接**
 
 - **项目地址**：https://github.com/EvilJoker/pkmskill
-- **进一步阅读**：更完整的目录约定、工作流与命令设计见仓库内 `docs/ARCHITECTURE.md`；Skill 文件位于 `.pkm/Skills/PKM/`，可按需在提示词中做领域定制。
+- **进一步阅读**：更完整的目录约定、工作流与命令设计见仓库内 `docs/ARCHITECTURE.md`；Skill 文件位于 `.pkm/Skill/`，可按需在提示词中做领域定制。
