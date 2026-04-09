@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.pkm/
+pkm.egg-info/
+coverage/
+.coverage
+.coverage.*
