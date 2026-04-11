@@ -29,7 +29,41 @@ jobs:
           name: pkm-wheel
           path: pkm-server/dist/*.whl
 
-      - name: Create Release
+      - name: Create/update snapshot release (main branch)
+        if: github.ref == 'refs/heads/main'
+        run: |
+          # Delete existing snapshot release if exists
+          EXISTING=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/tags/snapshot" || echo "null")
+          if [ "$(echo "$EXISTING" | jq -r '.id')" != "null" ]; then
+            RELEASE_ID=$(echo "$EXISTING" | jq -r '.id')
+            curl -s -X DELETE -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              "https://api.github.com/repos/${{ github.repository }}/releases/$RELEASE_ID"
+          fi
+
+          # Create new snapshot release
+          curl -s -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            "https://api.github.com/repos/${{ github.repository }}/releases" \
+            -d '{
+              "tag_name": "snapshot",
+              "name": "Snapshot",
+              "prerelease": true,
+              "draft": false
+            }' > /tmp/snapshot_release.json
+
+          RELEASE_ID=$(cat /tmp/snapshot_release.json | jq -r '.id')
+
+          # Upload wheel asset
+          ASSET_URL=$(curl -s -X POST \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Content-Type: application/octet-stream" \
+            "https://uploads.github.com/repos/${{ github.repository }}/releases/${RELEASE_ID}/assets?name=pkm-$(cd pkm-server && python -c "import setup; print(setup.version)").1-py3-none-any.whl" \
+            --data-binary @pkm-server/dist/*.whl | jq -r '.browser_download_url')
+
+          echo "Snapshot release created: $ASSET_URL"
+
+      - name: Create Release (tag push)
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
