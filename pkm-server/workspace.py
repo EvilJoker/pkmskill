@@ -123,3 +123,78 @@ last_updated: {now}
         f.write(project_md)
 
     return workspace_path
+
+
+DEFAULT_PROJECT_NAME = "default"
+ARCHIVE_BASE = os.path.join(WORKSPACE_BASE, "80_Archives")
+
+
+def get_archive_base() -> str:
+    """获取归档目录根目录"""
+    os.makedirs(ARCHIVE_BASE, exist_ok=True)
+    return ARCHIVE_BASE
+
+
+def create_default_project_workspace() -> str:
+    """创建 default 项目工作区（如果不存在）"""
+    base_dir = get_project_workspace_base()
+    default_name = f"P_default"
+
+    # 检查是否已存在
+    for item in os.listdir(base_dir):
+        if item == default_name or item.startswith("P_default"):
+            return os.path.join(base_dir, item)
+
+    # 创建 default 项目
+    workspace_path = os.path.join(base_dir, default_name)
+    os.makedirs(workspace_path, exist_ok=True)
+
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    project_md = f"""---
+purpose: Default 项目工作区
+maintainer: system
+last_updated: {now}
+---
+
+# Project: Default
+
+所有找不到关联项目的任务都会回流到这里。
+
+## 项目描述
+用于接收无法归属到特定项目的任务经验。
+
+---
+"""
+    with open(os.path.join(workspace_path, "project.md"), "w", encoding="utf-8") as f:
+        f.write(project_md)
+
+    return workspace_path
+
+
+def get_default_project_workspace() -> str:
+    """获取或创建 default 项目工作区路径"""
+    base_dir = get_project_workspace_base()
+    for item in os.listdir(base_dir):
+        if item == "P_default" or item.startswith("P_default"):
+            return os.path.join(base_dir, item)
+    # 如果不存在，创建它
+    return create_default_project_workspace()
+
+
+def archive_task_workspace(workspace_path: str) -> str:
+    """将任务工作区移动到归档目录"""
+    if not workspace_path or not os.path.exists(workspace_path):
+        return None
+
+    archive_dir = get_archive_base()
+    task_name = os.path.basename(workspace_path)
+    archive_path = os.path.join(archive_dir, task_name)
+
+    # 如果已存在，加时间戳
+    if os.path.exists(archive_path):
+        task_name = f"{task_name}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        archive_path = os.path.join(archive_dir, task_name)
+
+    import shutil
+    shutil.move(workspace_path, archive_path)
+    return archive_path

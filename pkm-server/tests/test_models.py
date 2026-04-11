@@ -21,7 +21,10 @@ class TestEnums:
     def test_task_status_values(self):
         assert TaskStatus.pending.value == "pending"
         assert TaskStatus.in_progress.value == "in_progress"
-        assert TaskStatus.completed.value == "completed"
+        # Status flow: pending -> in_progress -> done -> approved -> archived
+        assert TaskStatus.done.value == "done"
+        assert TaskStatus.approved.value == "approved"
+        assert TaskStatus.archived.value == "archived"
 
     def test_task_priority_values(self):
         assert TaskPriority.high.value == "high"
@@ -77,7 +80,7 @@ class TestTaskModels:
     def test_task_update_with_all_fields(self):
         update = TaskUpdate(
             title="Updated",
-            status=TaskStatus.completed,
+            status=TaskStatus.done,
             priority=TaskPriority.low,
             quadrant=4,
             project_id="proj-456",
@@ -85,7 +88,7 @@ class TestTaskModels:
             due_date=date(2026, 5, 1)
         )
         assert update.title == "Updated"
-        assert update.status == TaskStatus.completed
+        assert update.status == TaskStatus.done
         assert update.priority == TaskPriority.low
         assert update.quadrant == 4
         assert update.project_id == "proj-456"

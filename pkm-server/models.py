@@ -8,7 +8,9 @@ import uuid
 class TaskStatus(str, Enum):
     pending = "pending"
     in_progress = "in_progress"
-    completed = "completed"
+    done = "done"           # 新增：已完成，待评审
+    approved = "approved"    # 新增：评审通过，可回流
+    archived = "archived"   # 新增：已归档
 
 
 class TaskPriority(str, Enum):
@@ -54,7 +56,6 @@ class Task(TaskBase):
     created_at: datetime
     updated_at: datetime
     completed_at: Optional[datetime] = None
-    workspace_path: Optional[str] = None
 
     class Config:
         from_attributes = True

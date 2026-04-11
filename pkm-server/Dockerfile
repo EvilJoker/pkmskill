@@ -1,5 +1,16 @@
 FROM python:3.11-slim
+
+# 安装 Node.js 和 npm（用于安装 claude-code）
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    nodejs \
+    npm \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
+
+# 全局安装 claude-code
+RUN npm install -g @anthropic-ai/claude-code
+
 COPY requirements.txt .
 RUN pip install --quiet --no-cache-dir \
     fastapi==0.109.2 \

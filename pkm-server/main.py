@@ -24,6 +24,15 @@ app.add_middleware(
 @app.on_event("startup")
 def startup():
     database.init_db()
+    # 创建 default 项目工作区
+    from workspace import create_default_project_workspace, get_default_project_workspace
+    create_default_project_workspace()
+    # 检查 Claude CLI 环境
+    from knowledge import check_claude_environment
+    claude_ok, claude_msg = check_claude_environment()
+    if not claude_ok:
+        import logging
+        logging.warning(f"Claude CLI 检查失败: {claude_msg}")
 
 
 @app.get("/health")
@@ -82,7 +91,8 @@ def create_task(task: TaskCreate):
         quadrant=task.quadrant,
         project_id=task.project_id,
         progress=task.progress,
-        due_date=str(task.due_date) if task.due_date else None
+        due_date=str(task.due_date) if task.due_date else None,
+        workspace_path=task.workspace_path
     )
 
 
@@ -131,3 +141,53 @@ def done_task(task_id: str):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=get_port())
+
+
+# Knowledge Reflow APIs
+@app.post("/api/knowledge/reflow")
+def trigger_reflow():
+    """手动触发知识回流"""
+    from knowledge import run_reflow_cycle
+    result = run_reflow_cycle()
+    return {
+        "triggered": True,
+        "processed": result["processed"],
+        "succeeded": result["succeeded"],
+        "failed": result["failed"],
+        "message": f"处理了 {result['processed']} 个任务，成功 {result['succeeded']}，失败 {result['failed']}"
+    }
+
+
+@app.get("/api/knowledge/status")
+def get_reflow_status():
+    """获取回流状态"""
+    from knowledge import get_reflow_status as get_status
+    return get_status()
+
+
+@app.patch("/api/knowledge/config")
+def update_reflow_config(interval: Optional[int] = None,
+                          exclude_patterns: Optional[List[str]] = None,
+                          content_types: Optional[List[str]] = None):
+    """配置回流参数"""
+    from knowledge import REFLOW_CONFIG
+    if interval is not None:
+        REFLOW_CONFIG["interval"] = interval
+    if exclude_patterns is not None:
+        REFLOW_CONFIG["exclude_patterns"] = exclude_patterns
+    if content_types is not None:
+        REFLOW_CONFIG["content_types"] = content_types
+    return {"config": REFLOW_CONFIG}
+
+
+@app.post("/api/knowledge/approve/{task_id}")
+def approve_task_reflow(task_id: str):
+    """批准任务回流（将状态从 done 改为 approved）"""
+    from database import get_task, update_task
+    task = get_task(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    if task["status"] != "done":
+        raise HTTPException(status_code=400, detail=f"Task status is {task['status']}, expected done")
+    updated = update_task(task_id, status="approved")
+    return updated

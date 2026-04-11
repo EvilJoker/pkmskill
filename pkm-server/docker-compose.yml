@@ -11,3 +11,5 @@ services:
       - ~/.pkm:/root/.pkm
     working_dir: /app
     restart: unless-stopped
+    env_file:
+      - ~/.pkm/.env

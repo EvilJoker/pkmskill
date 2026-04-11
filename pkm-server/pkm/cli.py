@@ -345,5 +345,40 @@ def archive(project_id):
     click.echo("Project archived")
 
 
+# Knowledge Reflow commands
+@cli.group()
+def reflow():
+    """Knowledge reflow management"""
+    pass
+
+
+@reflow.command()
+def run():
+    """Manually trigger knowledge reflow
+
+    Example:
+      pkm reflow run"""
+    click.echo("Starting knowledge reflow...")
+    r = requests.post(f"{API_BASE}/api/knowledge/reflow")
+    r.raise_for_status()
+    result = r.json()
+    click.echo(f"Reflow completed: {result['message']}")
+
+
+@reflow.command()
+def status():
+    """Get reflow status
+
+    Example:
+      pkm reflow status"""
+    r = requests.get(f"{API_BASE}/api/knowledge/status")
+    r.raise_for_status()
+    result = r.json()
+    click.echo(f"Pending approved tasks: {result['pending_approved_tasks']}")
+    click.echo(f"Pending reflows: {result['pending_reflows']}")
+    click.echo(f"Claude CLI available: {result['claude_available']}")
+    click.echo(f"Config: {result['config']}")
+
+
 if __name__ == "__main__":
     cli()

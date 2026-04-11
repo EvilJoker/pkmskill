@@ -121,9 +121,10 @@ class TestTaskDatabase:
         assert len(pending) == 1
         assert pending[0]["title"] == "进行中"
 
-        completed = list_tasks(status="completed")
-        assert len(completed) == 1
-        assert completed[0]["title"] == "已完成"
+        # complete_task sets status to 'done' (not 'completed')
+        done = list_tasks(status="done")
+        assert len(done) == 1
+        assert done[0]["title"] == "已完成"
 
     def test_list_tasks_filter_by_quadrant(self, override_db_path):
         """Should filter tasks by quadrant"""
@@ -147,13 +148,14 @@ class TestTaskDatabase:
         assert all(t["project_id"] == project["id"] for t in project_tasks)
 
     def test_complete_task(self, override_db_path):
-        """Should mark task as completed"""
+        """Should mark task as done"""
         task = create_task(title="完成任务", priority="medium", quadrant=2)
         result = complete_task(task["id"])
         assert result is not None  # Returns the updated task object
 
         task = get_task(task["id"])
-        assert task["status"] == "completed"
+        # complete_task sets status to 'done' (new flow: pending -> done -> approved -> archived)
+        assert task["status"] == "done"
         assert task["completed_at"] is not None
 
 

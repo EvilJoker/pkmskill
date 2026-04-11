@@ -156,7 +156,7 @@ class TestCLITask:
 
         # Verify
         r = run_cli(f"task get {task_id}")
-        assert "completed" in r.stdout
+        assert "done" in r.stdout
 
     def test_task_delete(self, wait_for_server):
         """Should delete a task"""
@@ -180,8 +180,8 @@ class TestCLITask:
         task_id = r.stdout.split("Task created: ")[1].strip()
         run_cli(f"task done {task_id}")
 
-        # List completed
-        r = run_cli("task ls --status completed")
+        # List done
+        r = run_cli("task ls --status done")
         assert "测试CLI状态过滤" in r.stdout
 
         # List pending

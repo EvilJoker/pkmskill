@@ -7,25 +7,25 @@
   "tags": ["test", "pkm", "agent"],
   "createdAt": "2026-02-28T00:00:00Z",
   "updatedAt": "2026-02-28T00:00:00Z",
-  
+
   "execution": {
     "command": "echo 'Hello from PKM Agent!' && sleep 5 && echo 'Task completed'",
-    "workdir": "/home/10312862@zte.intra/.pkm",
+    "workdir": "~/.pkm",
     "env": {
       "TEST_VAR": "test_value"
     },
     "timeout": 3600,
     "shell": "/bin/bash"
   },
-  
+
   "agent": {
-    "heartbeatPath": "/home/10312862@zte.intra/.pkm/heartbeat/T-20260228-000001.heartbeat",
+    "heartbeatPath": "~/.pkm/heartbeat/T-20260228-000001.heartbeat",
     "maxRetries": 3,
     "retryCount": 0,
     "lastRunTime": null,
     "runHistory": []
   },
-  
+
   "result": {
     "exitCode": null,
     "output": null,
@@ -33,7 +33,7 @@
     "completedAt": null,
     "duration": null
   },
-  
+
   "pkm": {
     "project": "个人知识库pkm",
     "knowledgeFiles": [],

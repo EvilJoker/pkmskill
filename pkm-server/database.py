@@ -40,6 +40,20 @@ def init_db():
                 FOREIGN KEY (project_id) REFERENCES projects(id)
             )
         """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS knowledge_reflow (
+                id INTEGER PRIMARY KEY,
+                task_id TEXT NOT NULL,
+                project_id TEXT NOT NULL,
+                status TEXT DEFAULT 'pending',
+                reflowed_at TEXT,
+                error TEXT,
+                created_at TEXT NOT NULL
+            )
+        """)
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_reflow_status ON knowledge_reflow(status)
+        """)
         conn.commit()
 
 
@@ -218,7 +232,67 @@ def complete_task(task_id: str) -> Optional[dict]:
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute(
-            "UPDATE tasks SET status = 'completed', updated_at = ?, completed_at = ? WHERE id = ?",
+            "UPDATE tasks SET status = 'done', updated_at = ?, completed_at = ? WHERE id = ?",
             (now, now, task_id)
         )
     return get_task(task_id)
+
+
+# Knowledge Reflow CRUD
+def create_reflow(task_id: str, project_id: str) -> dict:
+    now = datetime.utcnow().isoformat()
+    reflow = {
+        "id": None,
+        "task_id": task_id,
+        "project_id": project_id,
+        "status": "pending",
+        "reflowed_at": None,
+        "error": None,
+        "created_at": now
+    }
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO knowledge_reflow (task_id, project_id, status, created_at) VALUES (?, ?, ?, ?)",
+            (task_id, project_id, "pending", now)
+        )
+        reflow["id"] = cursor.lastrowid
+    return reflow
+
+
+def get_reflow_by_task(task_id: str) -> Optional[dict]:
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM knowledge_reflow WHERE task_id = ?", (task_id,))
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
+def update_reflow_status(reflow_id: int, status: str, error: Optional[str] = None) -> None:
+    now = datetime.utcnow().isoformat()
+    with get_db() as conn:
+        cursor = conn.cursor()
+        if status == "completed":
+            cursor.execute(
+                "UPDATE knowledge_reflow SET status = ?, reflowed_at = ?, error = NULL WHERE id = ?",
+                (status, now, reflow_id)
+            )
+        elif error:
+            cursor.execute(
+                "UPDATE knowledge_reflow SET status = ?, error = ? WHERE id = ?",
+                (status, error, reflow_id)
+            )
+        else:
+            cursor.execute(
+                "UPDATE knowledge_reflow SET status = ? WHERE id = ?",
+                (status, reflow_id)
+            )
+
+
+def list_pending_reflows() -> List[dict]:
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT * FROM knowledge_reflow WHERE status IN ('pending', 'processing') ORDER BY created_at"
+        )
+        return [dict(row) for row in cursor.fetchall()]
