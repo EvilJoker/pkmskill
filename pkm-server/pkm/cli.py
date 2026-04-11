@@ -9,7 +9,7 @@ from pathlib import Path
 # Add parent directory to path for config import
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from pkm.config import get_port
-from workspace import create_task_workspace, create_project_workspace
+from pkm.workspace import create_task_workspace, create_project_workspace
 
 # Note: When using docker-compose, exposed port is 8890, server listens on 7890 internally
 # Use PKM_API_BASE env var or create ~/.pkm/config.yaml to override

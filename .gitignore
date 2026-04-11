@@ -1,2 +1,4 @@
 data/
 .config.worktrees
+dist/
+.claude/worktrees
