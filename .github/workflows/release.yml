@@ -27,10 +27,10 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: snapshot
-          release_name: Snapshot
+          name: Snapshot
           prerelease: true
           draft: false
-          replace_existing: true
+          overwrite_files: true
           files: pkm-server/dist/*.whl
 
   release:
