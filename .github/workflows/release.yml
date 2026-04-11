@@ -7,7 +7,8 @@ on:
     tags: ['v*']
 
 jobs:
-  build-wheel:
+  snapshot:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -23,26 +24,19 @@ jobs:
       - name: Build wheel
         run: cd pkm-server && python -m build
 
-      - name: Upload wheel artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: pkm-wheel
-          path: pkm-server/dist/*.whl
-
-      - name: Create/update snapshot release (main branch)
-        if: github.ref == 'refs/heads/main'
+      - name: Delete old snapshot release
         run: |
-          # Delete existing snapshot release if exists
-          EXISTING=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/repos/${{ github.repository }}/releases/tags/snapshot" || echo "null")
-          if [ "$(echo "$EXISTING" | jq -r '.id')" != "null" ]; then
-            RELEASE_ID=$(echo "$EXISTING" | jq -r '.id')
+          RELEASE_ID=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/releases" | \
+            jq -r '.[] | select(.tag_name=="snapshot") | .id')
+          if [ "$RELEASE_ID" != "null" ] && [ -n "$RELEASE_ID" ]; then
             curl -s -X DELETE -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
               "https://api.github.com/repos/${{ github.repository }}/releases/$RELEASE_ID"
           fi
 
-          # Create new snapshot release
-          curl -s -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+      - name: Create snapshot release
+        run: |
+          RESPONSE=$(curl -s -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             -H "Content-Type: application/json" \
             "https://api.github.com/repos/${{ github.repository }}/releases" \
             -d '{
@@ -50,21 +44,41 @@ jobs:
               "name": "Snapshot",
               "prerelease": true,
               "draft": false
-            }' > /tmp/snapshot_release.json
+            }')
+          echo "Release response: $RESPONSE"
 
-          RELEASE_ID=$(cat /tmp/snapshot_release.json | jq -r '.id')
-
-          # Upload wheel asset
-          ASSET_URL=$(curl -s -X POST \
+      - name: Upload wheel to snapshot release
+        run: |
+          sleep 3
+          UPLOAD_URL=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/tags/snapshot" | \
+            jq -r '.upload_url' | sed 's/{?name,label}//')
+          echo "Upload URL: $UPLOAD_URL"
+          WHEEL_FILE=$(ls pkm-server/dist/*.whl | head -1)
+          curl -s -X POST \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             -H "Content-Type: application/octet-stream" \
-            "https://uploads.github.com/repos/${{ github.repository }}/releases/${RELEASE_ID}/assets?name=pkm-$(cd pkm-server && python -c "import setup; print(setup.version)").1-py3-none-any.whl" \
-            --data-binary @pkm-server/dist/*.whl | jq -r '.browser_download_url')
+            "$UPLOAD_URL?name=$(basename $WHEEL_FILE)" \
+            --data-binary @"$WHEEL_FILE"
 
-          echo "Snapshot release created: $ASSET_URL"
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
-      - name: Create Release (tag push)
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install build dependencies
+        run: pip install build
+
+      - name: Build wheel
+        run: cd pkm-server && python -m build
+
+      - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           files: pkm-server/dist/*.whl
