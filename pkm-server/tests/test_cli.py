@@ -297,3 +297,23 @@ class TestCLIQuadrantExplanation:
         """Quadrant option should show Q1-Q4 meaning"""
         r = run_cli("task add --help")
         assert "Q1=1" in r.stdout or "Q1" in r.stdout
+
+
+class TestCLIServer:
+    """Test CLI server commands"""
+
+    def test_server_status(self, wait_for_server):
+        """Should check server status"""
+        r = run_cli("server status")
+        assert r.returncode == 0
+
+    def test_server_stop_when_not_running(self):
+        """Should handle server stop when not running"""
+        # Remove PID file if it exists
+        import os
+        pid_file = os.path.expanduser("~/.pkm/pkm-server.pid")
+        if os.path.exists(pid_file):
+            os.remove(pid_file)
+        r = run_cli("server stop")
+        # Should handle gracefully (not running)
+        assert r.returncode == 0

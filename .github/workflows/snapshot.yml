@@ -1,0 +1,73 @@
+name: Snapshot CI
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Load base image
+        run: docker pull ghcr.io/eviljoker/pkm:base-latest || true
+
+      - name: Build client (wheel)
+        run: cd pkm-server && make build-client
+
+      - name: Build server image
+        run: |
+          cd pkm-server
+          docker build --cache-from ghcr.io/eviljoker/pkm:base-latest -t ghcr.io/eviljoker/pkm:snapshot .
+
+      - name: Create PKM config directory
+        run: mkdir -p ~/.pkm && touch ~/.pkm/.env
+
+      - name: Run tests
+        run: cd pkm-server && make test
+
+      - name: Check coverage thresholds
+        run: |
+          docker cp pkm-server:/tmp/cov.json /tmp/cov.json
+          python3 -c "import json; c=json.load(open('/tmp/cov.json')); t=c['totals']; line=int(t['percent_covered']); branch=int(t.get('percent_branches_covered',0)); print('line='+str(line)+'% branch='+str(branch)+'%'); exit(1 if line<75 or branch<55 else 0)"
+
+      - name: Push wheel to release
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd pkm-server
+          if gh release view snapshot > /dev/null 2>&1; then
+            gh release upload snapshot dist/*.whl --clobber
+          else
+            gh release create snapshot --title "Snapshot" --prerelease
+            gh release upload snapshot dist/*.whl
+          fi
+
+      - name: Push server image
+        if: success()
+        run: docker push ghcr.io/eviljoker/pkm:snapshot
+
+      - name: Cleanup
+        if: always()
+        run: docker compose -f pkm-server/docker-compose.yml down

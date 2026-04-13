@@ -1,7 +1,13 @@
-.PHONY: install build start start-dev stop logs ps clean test build-base
+.PHONY: install build start start-dev stop logs ps clean test build-base build-client build-server
 
 install:
 	pip install -e .
+
+build-client:
+	pip install build
+	rm -rf dist/*.whl dist/*.tar.gz
+	python -m build
+	mv dist/*.whl dist/pkm-0.0.0-py3-none-any.whl
 
 build:
 	docker-compose build --no-cache
@@ -30,6 +36,9 @@ clean:
 	docker-compose -f docker-compose.prod.yml down -v
 	docker rmi pkm-server_pkm-server:latest || true
 
+build-server:
+	docker build --cache-from ghcr.io/eviljoker/pkm:base-latest -t ghcr.io/eviljoker/pkm:snapshot .
+
 build-base:
 	docker build -t ghcr.io/eviljoker/pkm:base-latest -f Dockerfile.base .
 	docker push ghcr.io/eviljoker/pkm:base-latest
@@ -37,5 +46,4 @@ build-base:
 test:
 	docker compose up -d
 	sleep 5
-	docker compose exec -T pkm-server bash -c "pip install -e . -q && pytest tests/ -v --cov=. --cov-branch --ignore=tests/test_install.py 2>&1 | tail -20; coverage json -o /tmp/cov.json; python3 -c 'import json; c=json.load(open(\"/tmp/cov.json\")); t=c[\"totals\"]; print(\"\\n=== RESULT: passed=121 failed=0 line=\"+str(int(t[\"percent_covered\"]))+\"% branch=\"+str(int(t.get(\"percent_branches_covered\",0)))+\"% ===\")'"
-	docker compose down 2>/dev/null || true
+	docker compose exec -e PKM_API_BASE=http://localhost:7890 -T pkm-server bash -c "pip install -e . -q && pytest tests/ --cov=. --cov-branch --ignore=tests/test_install.py && coverage json -o /tmp/cov.json"; exit $$exit_code
