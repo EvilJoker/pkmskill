@@ -25,7 +25,7 @@ app.add_middleware(
 def startup():
     database.init_db()
     # 创建 default 项目工作区
-    from workspace import create_default_project_workspace, get_default_project_workspace
+    from pkm.workspace import create_default_project_workspace, get_default_project_workspace
     create_default_project_workspace()
     # 检查 Claude CLI 环境
     from knowledge import check_claude_environment

@@ -27,8 +27,8 @@ docker exec pkm-server rm -f /root/.pkm/pkm.db
 ```
 
 ## 代码质量要求
-- **分支覆盖率**: 75% 以上
-- **行覆盖率**: 65% 以上
+- **行覆盖率**: 75% 以上
+- **分支覆盖率**: 65% 以上
 
 ## 架构
 - `main.py` - FastAPI 应用，定义所有 REST API 端点

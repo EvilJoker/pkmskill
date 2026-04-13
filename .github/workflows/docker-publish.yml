@@ -5,10 +5,48 @@ on:
     branches: [main]
     tags:
       - 'v*'
+  workflow_run:
+    workflows: ["CI Test"]
+    types: [completed]
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Create PKM config directory
+        run: mkdir -p ~/.pkm && touch ~/.pkm/.env
+
+      - name: Start services
+        run: docker compose -f pkm-server/docker-compose.yml up -d
+
+      - name: Wait for services
+        run: sleep 5
+
+      - name: Run tests with coverage
+        run: |
+          docker compose -f pkm-server/docker-compose.yml run --rm \
+            -e PKM_API_BASE=http://pkm-server:7890 \
+            pkm-server \
+            bash -c "coverage run -m pytest tests/ -v --cov=. --cov-branch --ignore=tests/test_install.py && coverage report --show-missing"
+
+      - name: Check coverage thresholds
+        run: |
+          docker compose -f pkm-server/docker-compose.yml run --rm \
+            pkm-server \
+            bash -c "coverage report --fail-under=75 --cov-branch --cov-fail-under=65"
+
+      - name: Cleanup
+        if: always()
+        run: docker compose -f pkm-server/docker-compose.yml down
+
   snapshot:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: (github.event_name == 'workflow_run' && github.event.workflow.conclusion == 'success') || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    needs: [test]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -35,6 +73,7 @@ jobs:
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
+    needs: [test]
     runs-on: ubuntu-latest
     permissions:
       contents: read

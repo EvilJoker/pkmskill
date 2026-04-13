@@ -1,7 +1,7 @@
 import os
 import tempfile
 import pytest
-from workspace import create_task_workspace, create_project_workspace, get_workspace_base_path
+from pkm.workspace import create_task_workspace, create_project_workspace, get_workspace_base_path
 
 def test_get_workspace_base_path():
     """测试获取工作区根目录"""

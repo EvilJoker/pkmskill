@@ -10,14 +10,32 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from pkm.config import load_config, get_port, get_log_level, CONFIG_PATH, DEFAULT_CONFIG
 
 
-def test_default_config():
+def test_default_config(tmp_path, monkeypatch):
     """Test default config values"""
+    # Use temporary config directory to avoid环境影响
+    import pkm.config
+    temp_dir = tmp_path / ".pkm"
+    temp_dir.mkdir()
+    temp_config = temp_dir / "config.yaml"
+
+    monkeypatch.setattr(pkm.config, "CONFIG_PATH", temp_config)
+    monkeypatch.setattr(pkm.config, "PKM_DIR", temp_dir)
+
     config = load_config()
     assert config["port"] == 7890
     assert config["log_level"] == "info"
 
 
-def test_get_port():
+def test_get_port(tmp_path, monkeypatch):
+    """Test get_port returns correct default"""
+    import pkm.config
+    temp_dir = tmp_path / ".pkm"
+    temp_dir.mkdir()
+    temp_config = temp_dir / "config.yaml"
+
+    monkeypatch.setattr(pkm.config, "CONFIG_PATH", temp_config)
+    monkeypatch.setattr(pkm.config, "PKM_DIR", temp_dir)
+
     assert get_port() == 7890
 
 

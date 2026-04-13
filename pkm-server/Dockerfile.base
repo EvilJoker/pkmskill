@@ -1,0 +1,30 @@
+# Base image with all dependencies pre-installed
+# Only rebuild when dependencies change
+
+FROM python:3.11-slim
+
+# 清除 apt 钩子，避免 Post-Invoke 错误
+RUN rm -f /etc/apt/apt.conf.d/docker-clean \
+    && echo 'Binary::apt::apt-get::APT-Sign::Enable "false";' > /etc/apt/apt.conf.d/99no-sign
+
+# 安装系统依赖
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends nodejs npm \
+    && rm -rf /var/lib/apt/lists/*
+
+# 安装 Python 依赖
+COPY requirements.txt .
+RUN pip install --quiet --no-cache-dir \
+    fastapi==0.109.2 \
+    uvicorn==0.27.1 \
+    pydantic==2.6.1 \
+    click==8.1.7 \
+    requests==2.31.0 \
+    pytest==8.0.0 \
+    pytest-cov==4.1.0 \
+    PyYAML==6.0.1
+
+# 预装 claude-code
+RUN npm install -g @anthropic-ai/claude-code
+
+WORKDIR /app

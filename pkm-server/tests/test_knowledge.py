@@ -23,7 +23,7 @@ from database import (
     list_tasks,
 )
 import knowledge
-import workspace
+import pkm.workspace as workspace
 
 
 @pytest.fixture

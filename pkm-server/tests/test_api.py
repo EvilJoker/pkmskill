@@ -161,8 +161,8 @@ class TestTaskAPI:
         tasks = r.json()
         assert not any(t["id"] == task_id for t in tasks)
 
-        # Filter by completed
-        r = api_client.list_tasks(status="completed")
+        # Filter by done
+        r = api_client.list_tasks(status="done")
         assert r.status_code == 200
         tasks = r.json()
         assert any(t["id"] == task_id for t in tasks)
@@ -220,7 +220,7 @@ class TestTaskAPI:
         assert data["workspace_path"] == "/tmp/test_task_ws"
 
     def test_done_task(self, api_client, wait_for_server):
-        """Should mark a task as completed"""
+        """Should mark a task as done"""
         r = api_client.create_task(title="测试_task_done", priority="medium", quadrant=2)
         task_id = r.json()["id"]
 
@@ -229,7 +229,7 @@ class TestTaskAPI:
 
         r = api_client.get_task(task_id)
         data = r.json()
-        assert data["status"] == "completed"
+        assert data["status"] == "done"
         assert data["completed_at"] is not None
 
     def test_delete_task(self, api_client, wait_for_server):

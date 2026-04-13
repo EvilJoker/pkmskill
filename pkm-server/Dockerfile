@@ -1,26 +1,10 @@
-FROM python:3.11-slim
+# Business image - based on pre-built base image
+# Fast rebuild when only code changes
 
-# 安装 Node.js 和 npm（用于安装 claude-code）
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    nodejs \
-    npm \
-    && rm -rf /var/lib/apt/lists/*
+FROM ghcr.io/eviljoker/pkm:base-latest
 
-WORKDIR /app
-
-# 全局安装 claude-code
-RUN npm install -g @anthropic-ai/claude-code
-
-COPY requirements.txt .
-RUN pip install --quiet --no-cache-dir \
-    fastapi==0.109.2 \
-    uvicorn==0.27.1 \
-    pydantic==2.6.1 \
-    click==8.1.7 \
-    requests==2.31.0 \
-    pytest==8.0.0 \
-    pytest-cov==4.1.0 \
-    PyYAML==6.0.1
+# 复制业务代码并安装
 COPY . .
 RUN pip install --quiet --no-cache-dir -e .
+
 CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "7890", "--loop", "asyncio"]

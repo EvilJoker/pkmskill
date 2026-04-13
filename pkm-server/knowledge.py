@@ -9,7 +9,7 @@ from database import (
     list_tasks, get_task, update_task, get_project,
     create_reflow, get_reflow_by_task, update_reflow_status, list_pending_reflows
 )
-from workspace import get_default_project_workspace, archive_task_workspace, get_project_workspace_base
+from pkm.workspace import get_default_project_workspace, archive_task_workspace, get_project_workspace_base
 
 # Claude CLI 路径
 CLAUDE_CMD = "claude"

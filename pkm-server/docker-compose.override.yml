@@ -1,0 +1,12 @@
+version: "3.8"
+
+# Override file for testing - automatically used with docker-compose.yml
+# Removes host ~/.pkm mount and env_file so container uses pure default config
+
+services:
+  pkm-server:
+    volumes:
+      - .:/app
+    environment:
+      - PKM_API_BASE=http://localhost:7890
+    env_file: ~

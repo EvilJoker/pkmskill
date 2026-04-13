@@ -92,10 +92,13 @@ class TestCLITask:
 
     def test_task_ls(self, wait_for_server):
         """Should list tasks"""
+        # Create a task first to ensure there's data to list
+        run_cli('task add "测试CLI列表任务" --priority high --quadrant 1')
         r = run_cli("task ls")
         assert r.returncode == 0
         # Output should contain task format: [id] title (status) - Q# [priority]
         assert "]" in r.stdout
+        assert "测试CLI列表任务" in r.stdout
 
     def test_task_add(self, wait_for_server):
         """Should add a new task"""
@@ -203,10 +206,13 @@ class TestCLIProject:
 
     def test_project_ls(self, wait_for_server):
         """Should list projects"""
+        # Create a project first to ensure there's data to list
+        run_cli('project add "测试CLI列表项目"')
         r = run_cli("project ls")
         assert r.returncode == 0
         # Output format: [id] name (status)
         assert "]" in r.stdout
+        assert "测试CLI列表项目" in r.stdout
 
     def test_project_add(self, wait_for_server):
         """Should add a new project"""
