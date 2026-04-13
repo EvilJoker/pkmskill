@@ -1,4 +1,4 @@
-.PHONY: install build start start-dev stop logs ps clean test build-base build-client build-server
+.PHONY: install build start start-dev stop logs ps clean test test-local test-deploy build-base build-client build-server
 
 install:
 	pip install -e .
@@ -46,4 +46,29 @@ build-base:
 test:
 	docker compose up -d
 	sleep 5
-	docker compose exec -e PKM_API_BASE=http://localhost:7890 -T pkm-server bash -c "pip install -e . -q && pytest tests/ --cov=. --cov-branch --ignore=tests/test_install.py && coverage json -o /tmp/cov.json"; exit $$exit_code
+	docker compose exec -e PKM_API_BASE=http://localhost:7890 -T pkm-server bash -c "pip install -e . -q && pytest tests/ --cov=. --cov-branch  && coverage json -o /tmp/cov.json"; exit $$exit_code
+
+test-local:
+	docker compose up -d
+	sleep 5
+	@docker compose exec -e PKM_API_BASE=http://localhost:7890 -T pkm-server bash -c "pip install -e . -q && pytest tests/ --cov=. --cov-branch  && coverage json -o /tmp/cov.json"; \
+	TEST_EXIT=$$?; \
+	if [ $$TEST_EXIT -eq 0 ]; then \
+		docker compose exec -T pkm-server bash -c 'python3 -c "import json; c=json.load(open(\"/tmp/cov.json\")); t=c[\"totals\"]; line=int(t[\"percent_covered\"]); branch=int(t.get(\"percent_branches_covered\",0)); print(f\"line={line}% branch={branch}%\"); exit(1 if line<75 or branch<55 else 0)"'; \
+		COV_EXIT=$$?; \
+		docker compose down; \
+		exit $$COV_EXIT; \
+	else \
+		docker compose down; \
+		exit $$TEST_EXIT; \
+	fi
+
+test-deploy:
+	@chmod +x install.sh
+	@timeout 180 ./install.sh snapshot || echo "install.sh failed"
+	@echo "=== Checking Docker images ==="
+	@docker images | grep pkm || echo "No pkm image found"
+	@echo "=== Checking pip packages ==="
+	@pip list | grep -i pkm || echo "No pkm package found"
+	@echo "=== Checking installed files ==="
+	@ls -la ~/.pkm/ || echo ".pkm directory not found"

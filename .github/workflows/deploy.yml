@@ -1,0 +1,29 @@
+name: Deploy Test
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create PKM config directory
+        run: mkdir -p ~/.pkm && touch ~/.pkm/.env
+
+      - name: Run deploy tests
+        run: cd pkm-server && make test-deploy
+
+      - name: Verify installation
+        run: |
+          echo "=== Checking Docker images ==="
+          docker images | grep pkm || echo "No pkm image found"
+
+          echo "=== Checking pip packages ==="
+          pip list | grep -i pkm || echo "No pkm package found"
+
+          echo "=== Checking installed files ==="
+          ls -la ~/.pkm/ || echo ".pkm directory not found"

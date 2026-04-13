@@ -25,13 +25,13 @@ download_wheel() {
     local whl_url="$GH_DOWNLOAD/$version/$whl_name"
 
     echo "Downloading wheel from: $whl_url"
-    curl -sL "$whl_url" -o "$PKM_HOME/pkm.whl" || {
+    curl -sL "$whl_url" -o "$PKM_HOME/$whl_name" || {
         echo "Failed to download wheel from $whl_url"
         return 1
     }
 
     echo "Installing wheel..."
-    pip install "$PKM_HOME/pkm.whl"
+    pip install "$PKM_HOME/$whl_name"
 }
 
 pull_docker_image() {
@@ -50,6 +50,7 @@ do_snapshot() {
 
     # Use snapshot tag directly (no API needed)
     local version="snapshot"
+    local whl_name="pkm-0.0.0-py3-none-any.whl"
     echo "Version: $version"
 
     # Download and install wheel
@@ -61,7 +62,7 @@ do_snapshot() {
     echo ""
     echo "Snapshot installation complete!"
     echo "Installed to: $PKM_HOME"
-    echo "Wheel: $PKM_HOME/pkm.whl"
+    echo "Wheel: $PKM_HOME/$whl_name"
     echo "Docker image: $IMAGE:$version"
 }
 
