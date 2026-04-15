@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   pkm-server:
-    image: ghcr.io/ashton_sun/pkm:latest
+    image: ghcr.io/eviljoker/pkm:snapshot
     container_name: pkm-server
     ports:
       - "8890:7890"

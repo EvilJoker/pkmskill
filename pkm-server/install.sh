@@ -43,6 +43,29 @@ pull_docker_image() {
     }
 }
 
+start_container() {
+    local tag=${1:-snapshot}
+    local container_name="pkm-server"
+    local port="8890:7890"
+    local pkm_home="${PKM_HOME:-$HOME/.pkm}"
+
+    echo "Starting container with restart policy..."
+
+    # Stop existing container if exists
+    docker stop "$container_name" 2>/dev/null || true
+    docker rm "$container_name" 2>/dev/null || true
+
+    # Run container with restart unless-stopped (auto-restart on failure and boot)
+    docker run -d \
+        --name "$container_name" \
+        --restart unless-stopped \
+        -p "$port" \
+        -v "$pkm_home:/root/.pkm" \
+        "$IMAGE:$tag"
+
+    echo "Container started: $container_name"
+}
+
 do_snapshot() {
     echo "Installing PKM snapshot..."
 
@@ -59,11 +82,15 @@ do_snapshot() {
     # Pull Docker image
     pull_docker_image "$version" || echo "Docker pull failed, continuing..."
 
+    # Start container with auto-restart
+    start_container "$version"
+
     echo ""
     echo "Snapshot installation complete!"
     echo "Installed to: $PKM_HOME"
     echo "Wheel: $PKM_HOME/$whl_name"
     echo "Docker image: $IMAGE:$version"
+    echo "Container: $container_name (restart: unless-stopped)"
 }
 
 # Main
