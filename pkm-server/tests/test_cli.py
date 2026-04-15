@@ -210,6 +210,29 @@ class TestCLIProject:
         assert "]" in r.stdout
         assert "测试CLI列表项目" in r.stdout
 
+    def test_project_ls_shows_default_with_bracket_not_index(self, wait_for_server):
+        """Should show default project with [default] not index, other projects with [1], [2]"""
+        # Ensure default project exists (it should by default)
+        r = run_cli("project ls")
+        assert r.returncode == 0
+        # Default project should show as [default] not [1]
+        assert "[default] default (active)" in r.stdout
+        # When we add new projects, they should show with numbered indices
+        run_cli('project add "测试序号项目A"')
+        run_cli('project add "测试序号项目B"')
+        r = run_cli("project ls")
+        assert r.returncode == 0
+        # default should still be [default], not [1]
+        assert "[default] default (active)" in r.stdout
+        # Other projects should be numbered [1], [2], etc.
+        # (Order depends on API, but they should have indices, not [default])
+        assert "[1]" in r.stdout or "[2]" in r.stdout
+        assert "测试序号项目A" in r.stdout
+        assert "测试序号项目B" in r.stdout
+        # Verify no project other than default has [default] label
+        lines_with_bracket_default = [l for l in r.stdout.split("\n") if "[default]" in l and "default" not in l.lower()]
+        assert len(lines_with_bracket_default) == 0, "Only default project should have [default] label"
+
     def test_project_add(self, wait_for_server):
         """Should add a new project"""
         r = run_cli('project add "测试CLI项目" --description "测试描述"')
@@ -276,6 +299,40 @@ class TestCLIProject:
         # List archived (archive sets status to "archived")
         r = run_cli("project ls --status archived")
         assert "测试CLI项目状态过滤" in r.stdout
+
+    def test_project_delete_default_fails(self, wait_for_server):
+        """Should not allow deleting default project"""
+        # Try to delete default project by name
+        r = run_cli("project delete default")
+        assert r.returncode != 0
+        assert "Cannot delete default" in r.stdout or "Cannot delete default" in r.stderr
+
+    def test_project_delete_by_index(self, wait_for_server):
+        """Should delete project by index"""
+        # Create a project to delete
+        r = run_cli('project add "测试CLI删除索引项目"')
+        project_id = r.stdout.split("Project created: ")[1].strip()
+
+        # Get project list and find the index
+        r = run_cli("project ls")
+        lines = r.stdout.strip().split("\n")
+        # Find the line with our project
+        idx = None
+        for line in lines:
+            if "测试CLI删除索引项目" in line:
+                # Extract index like [3]
+                idx = line.split("]")[0].replace("[", "")
+                break
+        assert idx is not None, "Project not found in list"
+
+        # Delete by index
+        r = run_cli(f"project delete {idx}")
+        assert r.returncode == 0
+        assert "deleted" in r.stdout
+
+        # Verify deleted
+        r = run_cli("project ls")
+        assert "测试CLI删除索引项目" not in r.stdout
 
 
 class TestCLIServer:

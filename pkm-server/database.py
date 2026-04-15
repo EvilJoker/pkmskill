@@ -132,6 +132,29 @@ def list_projects(status: Optional[str] = None) -> List[dict]:
         return [row_to_project(row) for row in cursor.fetchall()]
 
 
+def get_default_project_id() -> Optional[str]:
+    """获取 default 项目 ID"""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM projects WHERE name = 'default' LIMIT 1")
+        row = cursor.fetchone()
+        return row["id"] if row else None
+
+
+def migrate_tasks_to_default(project_id: str) -> int:
+    """将指定项目的所有任务迁移到 default 项目，返回迁移数量"""
+    default_id = get_default_project_id()
+    if not default_id:
+        return 0
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE tasks SET project_id = ? WHERE project_id = ?",
+            (default_id, project_id)
+        )
+        return cursor.rowcount
+
+
 def update_project(project_id: str, **kwargs) -> Optional[dict]:
     allowed = ["name", "description", "status", "workspace_path"]
     kwargs = {k: v for k, v in kwargs.items() if k in allowed and v is not None}

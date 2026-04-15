@@ -42,6 +42,16 @@ def startup():
     create_default_project_workspace()
     logger.info("Default project workspace ready")
 
+    # 确保 default 项目存在于数据库
+    from pkm.workspace import get_project_workspace_base
+    default_project_id = database.get_default_project_id()
+    if not default_project_id:
+        default_ws = get_default_project_workspace()
+        database.create_project("default", "Default project", workspace_path=default_ws)
+        logger.info("Default project created in database")
+    else:
+        logger.info("Default project exists in database")
+
     # 检查 Claude CLI 环境
     from knowledge import check_claude_environment
     claude_ok, claude_msg = check_claude_environment()
@@ -107,9 +117,26 @@ def update_project(project_id: str, update: ProjectUpdate):
 
 @app.delete("/api/projects/{project_id}")
 def delete_project(project_id: str):
-    if not database.delete_project(project_id):
+    project = database.get_project(project_id)
+    if not project:
         raise HTTPException(status_code=404, detail="Project not found")
-    return {"message": "deleted"}
+
+    # 检查是否为 default 项目
+    if project["name"].lower() == "default":
+        raise HTTPException(status_code=400, detail="Cannot delete default project")
+
+    # 迁移关联任务到 default
+    migrated = database.migrate_tasks_to_default(project_id)
+
+    # 删除项目
+    workspace_path = project.get("workspace_path")
+    database.delete_project(project_id)
+
+    return {
+        "message": "deleted",
+        "workspace_path": workspace_path,
+        "migrated_tasks": migrated
+    }
 
 
 @app.post("/api/projects/{project_id}/archive", response_model=Project)
