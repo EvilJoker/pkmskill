@@ -13,7 +13,7 @@ build:
 	docker-compose build --no-cache
 
 start:
-	docker-compose -f docker-compose.prod.yml up -d
+	docker-compose -f docker-compose.yml up -d
 	@echo "PKM Server started (production) on http://localhost:8890"
 
 start-dev:
@@ -28,7 +28,6 @@ status:
 
 stop:
 	docker-compose -f docker-compose.yml down
-	docker-compose -f docker-compose.prod.yml down
 
 logs:
 	docker-compose -f docker-compose.yml logs -f
@@ -44,7 +43,6 @@ ps-dev:
 
 clean:
 	docker-compose -f docker-compose.yml down -v
-	docker-compose -f docker-compose.prod.yml down -v
 	docker-compose -f docker-compose.dev.yml down -v || true
 	docker rmi pkm:local || true
 
