@@ -339,15 +339,67 @@ class TestCLIInbox:
         assert result.exit_code != 0
 
 
-class TestCLIProjectPath:
-    """Test project list with path option"""
+class TestCLIProjectLsDisplay:
+    """Test project ls display format - should use index numbers like task ls"""
 
-    def test_project_ls_path(self, runner, wait_for_server):
-        """Should show project workspace path with -p flag"""
-        runner.invoke(project, ["add", "测试项目路径"], catch_exceptions=False)
+    def test_project_ls_with_single_project(self, runner, wait_for_server):
+        """Should show project with index number, not UUID"""
+        # Create a project
+        runner.invoke(project, ["add", "测试项目显示"], catch_exceptions=False)
+        result = runner.invoke(project, ["ls"], catch_exceptions=False)
+        assert result.exit_code == 0
+        # Should show [序号] 名称 (状态)，不显示完整UUID
+        assert "]" in result.output
+        assert "测试项目显示" in result.output
+        # 不应该显示UUID格式 [xxxxxxxx-xxxx-xxxx...]
+        import re
+        uuid_pattern = r'\[[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\]'
+        assert not re.search(uuid_pattern, result.output), "不应显示UUID"
+
+    def test_project_ls_with_path_flag(self, runner, wait_for_server):
+        """Should show project name with path when -p flag is used, like task ls -p"""
+        # Create a project
+        runner.invoke(project, ["add", "测试路径显示"], catch_exceptions=False)
         result = runner.invoke(project, ["ls", "-p"], catch_exceptions=False)
         assert result.exit_code == 0
-        assert "/" in result.output or "~" in result.output
+        # 应该显示 [序号] 名称 (状态) -> 路径 格式
+        assert "->" in result.output
+        assert "测试路径显示" in result.output
+        assert "/" in result.output
+
+    def test_project_ls_multiple_projects(self, runner, wait_for_server):
+        """Should show multiple projects with sequential index numbers"""
+        # Create multiple projects
+        runner.invoke(project, ["add", "项目A"], catch_exceptions=False)
+        runner.invoke(project, ["add", "项目B"], catch_exceptions=False)
+        runner.invoke(project, ["add", "项目C"], catch_exceptions=False)
+        result = runner.invoke(project, ["ls"], catch_exceptions=False)
+        assert result.exit_code == 0
+        # 应该显示 [1], [2], [3] 等序号
+        assert "[1]" in result.output
+        assert "[2]" in result.output
+        assert "[3]" in result.output
+        # 不应该显示UUID
+        import re
+        uuid_pattern = r'\[[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\]'
+        assert not re.search(uuid_pattern, result.output), "不应显示UUID"
+
+    def test_project_ls_no_uuid_in_output(self, runner, wait_for_server):
+        """Should never show UUID in project ls output"""
+        runner.invoke(project, ["add", "无UUID测试"], catch_exceptions=False)
+        result = runner.invoke(project, ["ls"], catch_exceptions=False)
+        assert result.exit_code == 0
+        # 确保输出中没有8-4-4-4-12格式的UUID
+        lines = result.output.split("\n")
+        for line in lines:
+            if line.strip():
+                # 检查是否包含UUID模式
+                parts = line.split("]")
+                if len(parts) > 0:
+                    first_part = parts[0].strip().lstrip("[")
+                    # 如果第一个部分包含-，说明是UUID格式，应该报错
+                    assert "-" not in first_part or first_part.replace("-", "").isalnum() is False, \
+                        f"不应显示UUID: {line}"
 
 
 class TestCLIProjectUpdate:

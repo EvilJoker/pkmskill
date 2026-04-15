@@ -441,25 +441,26 @@ def ls(status, show_path):
                     if item.startswith("P_default"):
                         full_path = os.path.join(default_path, item)
                         if show_path:
-                            click.echo(full_path)
+                            click.echo(f"[default] P_default (active) -> {full_path}")
                         else:
-                            click.echo(f"[default] {item} (active)")
+                            click.echo(f"[default] P_default (active)")
                         return
         except OSError:
             pass
         click.echo("No projects found")
         return
 
-    for p in projects:
+    # 显示项目列表，使用序号而非UUID
+    for idx, p in enumerate(projects, 1):
         name = p["name"]
+        workspace_path = p.get("workspace_path", "")
         if show_path:
-            workspace_path = p.get("workspace_path", "")
             if workspace_path:
-                click.echo(workspace_path)
+                click.echo(f"[{idx}] {name} ({p['status']}) -> {workspace_path}")
             else:
-                click.echo(f"[{p['id'][:8]}] {name}")
+                click.echo(f"[{idx}] {name} ({p['status']})")
         else:
-            click.echo(f"[{p['id'][:8]}] {name} ({p['status']})")
+            click.echo(f"[{idx}] {name} ({p['status']})")
 
 
 @project.command()
