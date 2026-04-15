@@ -7,10 +7,26 @@ WORKSPACE_BASE = os.path.expanduser("~/.pkm")
 TASK_WORKSPACE_BASE = os.path.join(WORKSPACE_BASE, "10_Tasks")
 PROJECT_WORKSPACE_BASE = os.path.join(WORKSPACE_BASE, "60_Projects")
 
+# 50_Raw 路径
+RAW_BASE = os.path.join(WORKSPACE_BASE, "50_Raw")
+INBOX_BASE = os.path.join(RAW_BASE, "inbox")
+
 
 def get_workspace_base_path() -> str:
     """获取工作区根目录"""
     return WORKSPACE_BASE
+
+
+def get_raw_base() -> str:
+    """获取 50_Raw 目录"""
+    os.makedirs(RAW_BASE, exist_ok=True)
+    return RAW_BASE
+
+
+def get_inbox_base() -> str:
+    """获取 inbox 目录"""
+    os.makedirs(INBOX_BASE, exist_ok=True)
+    return INBOX_BASE
 
 
 def get_task_workspace_base() -> str:
@@ -25,13 +41,20 @@ def get_project_workspace_base() -> str:
     return PROJECT_WORKSPACE_BASE
 
 
-def generate_task_workspace_name() -> str:
-    """生成任务工作区目录名: TASK_T{date}_{seq}"""
+def generate_task_workspace_name(task_name: str = "") -> str:
+    """生成任务工作区目录名: TASK_T{date}_{seq}_{name}
+    name 为任务名称（前10字符），用于快速识别
+    """
     today = datetime.now().strftime("%Y%m%d")
     base = get_task_workspace_base()
     existing = [d for d in os.listdir(base) if d.startswith(f"TASK_T{today}_")]
     seq = len(existing) + 1
-    return f"TASK_T{today}_{seq:02d}"
+    # 任务名取前15字符，避免过长
+    if task_name:
+        name_part = task_name[:15]
+    else:
+        name_part = "task"
+    return f"TASK_T{today}_{seq:02d}_{name_part}"
 
 
 def create_task_workspace(task_id: str, title: str, base_dir: Optional[str] = None) -> str:
@@ -41,7 +64,7 @@ def create_task_workspace(task_id: str, title: str, base_dir: Optional[str] = No
     else:
         os.makedirs(base_dir, exist_ok=True)
 
-    workspace_name = generate_task_workspace_name()
+    workspace_name = generate_task_workspace_name(title)
     workspace_path = os.path.join(base_dir, workspace_name)
     os.makedirs(workspace_path, exist_ok=True)
 

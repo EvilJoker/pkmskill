@@ -19,9 +19,9 @@ class TestEnums:
     """Test enum values"""
 
     def test_task_status_values(self):
-        assert TaskStatus.pending.value == "pending"
-        assert TaskStatus.in_progress.value == "in_progress"
-        # Status flow: pending -> in_progress -> done -> approved -> archived
+        assert TaskStatus.new.value == "new"
+        assert TaskStatus.active.value == "active"
+        # Status flow: new -> active -> done -> approved -> archived
         assert TaskStatus.done.value == "done"
         assert TaskStatus.approved.value == "approved"
         assert TaskStatus.archived.value == "archived"
@@ -44,7 +44,6 @@ class TestTaskModels:
         task = TaskBase(title="Test Task")
         assert task.title == "Test Task"
         assert task.priority == TaskPriority.medium
-        assert task.quadrant == 2
         assert task.project_id is None
         assert task.progress is None
         assert task.due_date is None
@@ -53,23 +52,20 @@ class TestTaskModels:
         task = TaskBase(
             title="Test Task",
             priority=TaskPriority.high,
-            quadrant=1,
             project_id="proj-123",
             progress="50",
             due_date=date(2026, 4, 15)
         )
         assert task.title == "Test Task"
         assert task.priority == TaskPriority.high
-        assert task.quadrant == 1
         assert task.project_id == "proj-123"
         assert task.progress == "50"
         assert task.due_date == date(2026, 4, 15)
 
     def test_task_create(self):
-        task = TaskCreate(title="New Task", priority=TaskPriority.high, quadrant=3)
+        task = TaskCreate(title="New Task", priority=TaskPriority.high)
         assert task.title == "New Task"
         assert task.priority == TaskPriority.high
-        assert task.quadrant == 3
 
     def test_task_update_partial(self):
         update = TaskUpdate(title="Updated")
@@ -82,7 +78,6 @@ class TestTaskModels:
             title="Updated",
             status=TaskStatus.done,
             priority=TaskPriority.low,
-            quadrant=4,
             project_id="proj-456",
             progress="100",
             due_date=date(2026, 5, 1)
@@ -90,7 +85,6 @@ class TestTaskModels:
         assert update.title == "Updated"
         assert update.status == TaskStatus.done
         assert update.priority == TaskPriority.low
-        assert update.quadrant == 4
         assert update.project_id == "proj-456"
         assert update.progress == "100"
         assert update.due_date == date(2026, 5, 1)
@@ -100,13 +94,13 @@ class TestTaskModels:
         task = Task(
             id="task-123",
             title="Test Task",
-            status=TaskStatus.pending,
+            status=TaskStatus.new,
             created_at=now,
             updated_at=now
         )
         assert task.id == "task-123"
         assert task.title == "Test Task"
-        assert task.status == TaskStatus.pending
+        assert task.status == TaskStatus.new
         assert task.created_at == now
         assert task.completed_at is None
 

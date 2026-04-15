@@ -50,11 +50,10 @@ class TestTaskDatabase:
 
     def test_create_task(self, override_db_path):
         """Should create a task"""
-        task = create_task(title="测试任务", priority="high", quadrant=1)
+        task = create_task(title="测试任务", priority="high")
         assert task["title"] == "测试任务"
         assert task["priority"] == "high"
-        assert task["quadrant"] == 1
-        assert task["status"] == "pending"
+        assert task["status"] == "new"
         assert "id" in task
 
     def test_create_task_with_all_fields(self, override_db_path):
@@ -62,7 +61,6 @@ class TestTaskDatabase:
         task = create_task(
             title="完整任务",
             priority="medium",
-            quadrant=2,
             project_id="test-project-id",
             due_date="2026-04-15",
             progress=25
@@ -73,7 +71,7 @@ class TestTaskDatabase:
 
     def test_get_task(self, override_db_path):
         """Should get a task by ID"""
-        created = create_task(title="获取任务", priority="low", quadrant=4)
+        created = create_task(title="获取任务", priority="low")
         task = get_task(created["id"])
         assert task is not None
         assert task["title"] == "获取任务"
@@ -85,7 +83,7 @@ class TestTaskDatabase:
 
     def test_update_task(self, override_db_path):
         """Should update a task"""
-        task = create_task(title="更新任务", priority="low", quadrant=4)
+        task = create_task(title="更新任务", priority="low")
         updated = update_task(task["id"], title="已更新", priority="high", progress=50)
         assert updated is not None  # Returns the updated task object
 
@@ -96,7 +94,7 @@ class TestTaskDatabase:
 
     def test_delete_task(self, override_db_path):
         """Should delete a task"""
-        task = create_task(title="删除任务", priority="low", quadrant=3)
+        task = create_task(title="删除任务", priority="low")
         deleted = delete_task(task["id"])
         assert deleted is True
 
@@ -105,19 +103,19 @@ class TestTaskDatabase:
 
     def test_list_tasks(self, override_db_path):
         """Should list all tasks"""
-        create_task(title="任务1", priority="high", quadrant=1)
-        create_task(title="任务2", priority="medium", quadrant=2)
+        create_task(title="任务1", priority="high")
+        create_task(title="任务2", priority="medium")
         tasks = list_tasks()
         assert len(tasks) == 2
 
     def test_list_tasks_filter_by_status(self, override_db_path):
         """Should filter tasks by status"""
-        task1 = create_task(title="进行中", priority="high", quadrant=1)
-        task2 = create_task(title="已完成", priority="medium", quadrant=2)
+        task1 = create_task(title="进行中", priority="high")
+        task2 = create_task(title="已完成", priority="medium")
 
         complete_task(task2["id"])
 
-        pending = list_tasks(status="pending")
+        pending = list_tasks(status="new")
         assert len(pending) == 1
         assert pending[0]["title"] == "进行中"
 
@@ -126,22 +124,12 @@ class TestTaskDatabase:
         assert len(done) == 1
         assert done[0]["title"] == "已完成"
 
-    def test_list_tasks_filter_by_quadrant(self, override_db_path):
-        """Should filter tasks by quadrant"""
-        create_task(title="Q1任务", priority="high", quadrant=1)
-        create_task(title="Q2任务", priority="medium", quadrant=2)
-        create_task(title="Q3任务", priority="low", quadrant=3)
-
-        q1_tasks = list_tasks(quadrant=1)
-        assert len(q1_tasks) == 1
-        assert q1_tasks[0]["title"] == "Q1任务"
-
     def test_list_tasks_filter_by_project(self, override_db_path):
         """Should filter tasks by project"""
         project = create_project(name="测试项目")
-        create_task(title="项目任务1", priority="high", quadrant=1, project_id=project["id"])
-        create_task(title="项目任务2", priority="medium", quadrant=2, project_id=project["id"])
-        create_task(title="无项目任务", priority="low", quadrant=3)
+        create_task(title="项目任务1", priority="high", project_id=project["id"])
+        create_task(title="项目任务2", priority="medium", project_id=project["id"])
+        create_task(title="无项目任务", priority="low")
 
         project_tasks = list_tasks(project_id=project["id"])
         assert len(project_tasks) == 2
@@ -149,12 +137,12 @@ class TestTaskDatabase:
 
     def test_complete_task(self, override_db_path):
         """Should mark task as done"""
-        task = create_task(title="完成任务", priority="medium", quadrant=2)
+        task = create_task(title="完成任务", priority="medium")
         result = complete_task(task["id"])
         assert result is not None  # Returns the updated task object
 
         task = get_task(task["id"])
-        # complete_task sets status to 'done' (new flow: pending -> done -> approved -> archived)
+        # complete_task sets status to 'done' (flow: new -> active -> done -> approved -> archived)
         assert task["status"] == "done"
         assert task["completed_at"] is not None
 
@@ -230,13 +218,8 @@ class TestDatabaseEdgeCases:
 
     def test_create_task_invalid_priority(self, override_db_path):
         """Should handle invalid priority - stores as-is without validation"""
-        task = create_task(title="测试", priority="invalid", quadrant=2)
+        task = create_task(title="测试", priority="invalid")
         assert task["priority"] == "invalid"  # Database doesn't validate
-
-    def test_create_task_invalid_quadrant(self, override_db_path):
-        """Should handle invalid quadrant"""
-        task = create_task(title="测试", quadrant=5)
-        assert task["quadrant"] == 5  # Stored as-is
 
     def test_update_nonexistent_task(self, override_db_path):
         """Should return None when updating non-existent task"""
@@ -258,7 +241,6 @@ class TestDatabaseEdgeCases:
         task = create_task(
             title="测试任务",
             priority="medium",
-            quadrant=2,
             workspace_path="/tmp/test_task_workspace"
         )
         assert task["workspace_path"] == "/tmp/test_task_workspace"

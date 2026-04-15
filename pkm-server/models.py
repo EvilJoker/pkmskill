@@ -6,11 +6,11 @@ import uuid
 
 
 class TaskStatus(str, Enum):
-    pending = "pending"
-    in_progress = "in_progress"
-    done = "done"           # 新增：已完成，待评审
-    approved = "approved"    # 新增：评审通过，可回流
-    archived = "archived"   # 新增：已归档
+    new = "new"           # 新建
+    active = "active"     # 进行中
+    done = "done"         # 已完成，待评审
+    approved = "approved"  # 评审通过，可回流
+    archived = "archived" # 已归档
 
 
 class TaskPriority(str, Enum):
@@ -28,7 +28,6 @@ class ProjectStatus(str, Enum):
 class TaskBase(BaseModel):
     title: str
     priority: TaskPriority = TaskPriority.medium
-    quadrant: int = 2
     project_id: Optional[str] = None
     progress: Optional[str] = None
     due_date: Optional[date] = None
@@ -43,7 +42,6 @@ class TaskUpdate(BaseModel):
     title: Optional[str] = None
     status: Optional[TaskStatus] = None
     priority: Optional[TaskPriority] = None
-    quadrant: Optional[int] = None
     project_id: Optional[str] = None
     progress: Optional[str] = None
     due_date: Optional[date] = None
@@ -52,7 +50,7 @@ class TaskUpdate(BaseModel):
 
 class Task(TaskBase):
     id: str
-    status: TaskStatus = TaskStatus.pending
+    status: TaskStatus = TaskStatus.new
     created_at: datetime
     updated_at: datetime
     completed_at: Optional[datetime] = None

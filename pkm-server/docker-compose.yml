@@ -7,6 +7,7 @@ services:
     volumes:
       - .:/app
       - ~/.pkm:/root/.pkm
+      - ~/.pkm/logs:/root/.pkm/logs
     working_dir: /app
     restart: unless-stopped
     env_file:

@@ -4,4 +4,6 @@ pydantic==2.6.1
 click==8.1.7
 requests==2.31.0
 pytest==8.0.0
+pytest-cov==4.1.0
 PyYAML==6.0.1
+apscheduler==3.10.0

@@ -110,15 +110,13 @@ class TestTaskAPI:
         """Should create a new task"""
         r = api_client.create_task(
             title="测试_task_create",
-            priority="high",
-            quadrant=1
+            priority="high"
         )
         assert r.status_code == 200
         data = r.json()
         assert data["title"] == "测试_task_create"
         assert data["priority"] == "high"
-        assert data["quadrant"] == 1
-        assert data["status"] == "pending"
+        assert data["status"] == "new"
         assert "id" in data
 
     def test_create_task_with_all_fields(self, api_client, wait_for_server):
@@ -126,7 +124,6 @@ class TestTaskAPI:
         r = api_client.create_task(
             title="测试_task_full",
             priority="medium",
-            quadrant=2,
             due_date="2026-04-15",  # as string, API converts to date
             progress="0"  # as string per model
         )
@@ -138,7 +135,7 @@ class TestTaskAPI:
     def test_list_tasks(self, api_client, wait_for_server):
         """Should list all tasks"""
         # Create a task first
-        api_client.create_task(title="测试_task_list", priority="low", quadrant=4)
+        api_client.create_task(title="测试_task_list", priority="low")
 
         r = api_client.list_tasks()
         assert r.status_code == 200
@@ -149,14 +146,14 @@ class TestTaskAPI:
     def test_list_tasks_filter_by_status(self, api_client, wait_for_server):
         """Should filter tasks by status"""
         # Create tasks with different statuses
-        r1 = api_client.create_task(title="测试_task_pending", priority="medium", quadrant=2)
+        r1 = api_client.create_task(title="测试_task_pending", priority="medium")
         task_id = r1.json()["id"]
 
         # Mark as completed
         api_client.done_task(task_id)
 
-        # Filter by pending
-        r = api_client.list_tasks(status="pending")
+        # Filter by new
+        r = api_client.list_tasks(status="new")
         assert r.status_code == 200
         tasks = r.json()
         assert not any(t["id"] == task_id for t in tasks)
@@ -167,19 +164,9 @@ class TestTaskAPI:
         tasks = r.json()
         assert any(t["id"] == task_id for t in tasks)
 
-    def test_list_tasks_filter_by_quadrant(self, api_client, wait_for_server):
-        """Should filter tasks by quadrant"""
-        api_client.create_task(title="测试_task_q1", priority="high", quadrant=1)
-        api_client.create_task(title="测试_task_q2", priority="medium", quadrant=2)
-
-        r = api_client.list_tasks(quadrant=1)
-        assert r.status_code == 200
-        tasks = r.json()
-        assert all(t["quadrant"] == 1 for t in tasks)
-
     def test_get_task(self, api_client, wait_for_server):
         """Should get a single task by ID"""
-        r = api_client.create_task(title="测试_task_get", priority="high", quadrant=1)
+        r = api_client.create_task(title="测试_task_get", priority="high")
         task_id = r.json()["id"]
 
         r = api_client.get_task(task_id)
@@ -195,7 +182,7 @@ class TestTaskAPI:
 
     def test_update_task(self, api_client, wait_for_server):
         """Should update a task"""
-        r = api_client.create_task(title="测试_task_update", priority="medium", quadrant=2)
+        r = api_client.create_task(title="测试_task_update", priority="medium")
         task_id = r.json()["id"]
 
         r = api_client.update_task(task_id, title="测试_task_updated", priority="high", progress="50")
@@ -209,7 +196,7 @@ class TestTaskAPI:
 
     def test_update_task_workspace_path(self, api_client, wait_for_server):
         """Should update task workspace_path via PATCH"""
-        r = api_client.create_task(title="测试_task_workspace", priority="medium", quadrant=2)
+        r = api_client.create_task(title="测试_task_workspace", priority="medium")
         task_id = r.json()["id"]
 
         r = api_client.update_task(task_id, workspace_path="/tmp/test_task_ws")
@@ -221,7 +208,7 @@ class TestTaskAPI:
 
     def test_done_task(self, api_client, wait_for_server):
         """Should mark a task as done"""
-        r = api_client.create_task(title="测试_task_done", priority="medium", quadrant=2)
+        r = api_client.create_task(title="测试_task_done", priority="medium")
         task_id = r.json()["id"]
 
         r = api_client.done_task(task_id)
@@ -234,7 +221,7 @@ class TestTaskAPI:
 
     def test_delete_task(self, api_client, wait_for_server):
         """Should delete a task"""
-        r = api_client.create_task(title="测试_task_delete", priority="low", quadrant=4)
+        r = api_client.create_task(title="测试_task_delete", priority="low")
         task_id = r.json()["id"]
 
         r = api_client.delete_task(task_id)
@@ -357,7 +344,6 @@ class TestTaskProjectRelation:
         r = api_client.create_task(
             title="测试_relation_task",
             priority="high",
-            quadrant=1,
             project_id=project_id
         )
         task_id = r.json()["id"]

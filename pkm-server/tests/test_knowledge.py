@@ -265,14 +265,14 @@ class TestProcessSingleTaskReflow:
 
     def test_task_not_approved(self, override_db_path):
         """Should return error when task status is not approved"""
-        task = create_task(title="测试任务", priority="medium", quadrant=2)
+        task = create_task(title="测试任务", priority="medium")
         success, message = knowledge.process_single_task_reflow(task["id"])
         assert success is False
         assert "approved" in message
 
     def test_task_no_workspace(self, override_db_path):
         """Should return error when task has no workspace"""
-        task = create_task(title="测试任务", priority="medium", quadrant=2)
+        task = create_task(title="测试任务", priority="medium")
         update_task(task["id"], status="approved")
 
         success, message = knowledge.process_single_task_reflow(task["id"])
@@ -292,7 +292,6 @@ class TestProcessSingleTaskReflow:
         task = create_task(
             title="测试任务",
             priority="medium",
-            quadrant=2,
             workspace_path=temp_workspace,
             project_id=project["id"]
         )
@@ -333,8 +332,8 @@ class TestRunReflowCycle:
         """Should process approved tasks"""
         mock_process.return_value = (True, "成功")
 
-        task1 = create_task(title="任务1", priority="medium", quadrant=2)
-        task2 = create_task(title="任务2", priority="medium", quadrant=2)
+        task1 = create_task(title="任务1", priority="medium")
+        task2 = create_task(title="任务2", priority="medium")
         update_task(task1["id"], status="approved")
         update_task(task2["id"], status="approved")
 
@@ -349,8 +348,8 @@ class TestRunReflowCycle:
         """Should handle partial failures"""
         mock_process.side_effect = [(True, "成功"), (False, "失败")]
 
-        task1 = create_task(title="任务1", priority="medium", quadrant=2)
-        task2 = create_task(title="任务2", priority="medium", quadrant=2)
+        task1 = create_task(title="任务1", priority="medium")
+        task2 = create_task(title="任务2", priority="medium")
         update_task(task1["id"], status="approved")
         update_task(task2["id"], status="approved")
 
@@ -375,3 +374,296 @@ class TestGetReflowStatus:
         assert "claude_available" in status
         assert "interval" in status["config"]
         assert "exclude_patterns" in status["config"]
+
+
+# ============ Stage2 Tests ============
+
+class TestKnowledgeBasePaths:
+    """Test knowledge base path constants"""
+
+    def test_knowledge_base_defined(self):
+        """Should have KNOWLEDGE_BASE defined"""
+        assert hasattr(knowledge, "KNOWLEDGE_BASE")
+        assert "20_Areas/knowledge" in knowledge.KNOWLEDGE_BASE
+
+    def test_knowledge_subdirs_defined(self):
+        """Should have all knowledge subdirectories defined"""
+        assert hasattr(knowledge, "PRINCIPLES_DIR")
+        assert hasattr(knowledge, "PLAYBOOKS_DIR")
+        assert hasattr(knowledge, "TEMPLATES_DIR")
+        assert hasattr(knowledge, "CASES_DIR")
+        assert hasattr(knowledge, "NOTES_DIR")
+
+
+class TestClassifyKnowledge:
+    """Test knowledge classification"""
+
+    @patch("subprocess.run")
+    def test_classify_returns_directory_name(self, mock_run):
+        """Should return a valid directory name"""
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+        mock_result.stdout = "principles"
+        mock_run.return_value = mock_result
+
+        result = knowledge.classify_knowledge("坚持用户至上原则")
+        assert result in ["principles", "playbooks", "templates", "cases", "notes"]
+
+    @patch("subprocess.run")
+    def test_classify_defaults_to_notes_on_error(self, mock_run):
+        """Should return notes as default on error"""
+        mock_run.side_effect = Exception("error")
+        result = knowledge.classify_knowledge("一些笔记内容")
+        assert result == "notes"
+
+    @patch("subprocess.run")
+    def test_classify_invalid_response_defaults_to_notes(self, mock_run):
+        """Should return notes for invalid classification"""
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+        mock_result.stdout = "invalid_response"
+        mock_run.return_value = mock_result
+
+        result = knowledge.classify_knowledge("some content")
+        assert result == "notes"
+
+
+class TestCheckDuplicate:
+    """Test duplicate checking"""
+
+    def test_empty_dir_returns_not_duplicate(self, temp_workspace):
+        """Should return not duplicate when target dir is empty"""
+        import knowledge
+        # Temporarily change KNOWLEDGE_BASE
+        original = knowledge.KNOWLEDGE_BASE
+        knowledge.KNOWLEDGE_BASE = temp_workspace
+
+        is_dup, dup_type = knowledge.check_duplicate("some content", "notes")
+
+        knowledge.KNOWLEDGE_BASE = original
+        assert is_dup is False
+        assert dup_type == "new"
+
+
+class TestWriteToKnowledgeBase:
+    """Test writing to knowledge base"""
+
+    def setup_method(self):
+        """Create temp knowledge base"""
+        self.temp_kb = tempfile.mkdtemp()
+        import knowledge
+        self.original_base = knowledge.KNOWLEDGE_BASE
+        knowledge.KNOWLEDGE_BASE = self.temp_kb
+
+    def teardown_method(self):
+        """Restore original knowledge base"""
+        import knowledge
+        knowledge.KNOWLEDGE_BASE = self.original_base
+        shutil.rmtree(self.temp_kb, ignore_errors=True)
+
+    def test_write_to_notes_creates_file(self):
+        """Should create file in notes directory"""
+        content = "这是一条测试知识"
+        result = knowledge.write_to_knowledge_base(content, "notes", "测试项目")
+
+        assert os.path.exists(result)
+        assert "03notes" in result
+
+    def test_write_to_principles_creates_file(self):
+        """Should create file in principles directory"""
+        content = "坚持用户至上原则"
+        result = knowledge.write_to_knowledge_base(content, "principles", "测试项目")
+
+        assert os.path.exists(result)
+        assert "01principles" in result
+
+    def test_write_includes_metadata(self):
+        """Should include metadata in written file"""
+        content = "测试内容"
+        source = "测试项目"
+        result = knowledge.write_to_knowledge_base(content, "notes", source)
+
+        with open(result, "r", encoding="utf-8") as f:
+            file_content = f.read()
+
+        assert "source: 测试项目" in file_content
+        assert "type: notes" in file_content
+        assert "测试内容" in file_content
+
+
+class TestRunStage2Cycle:
+    """Test Stage2 cycle execution"""
+
+    def test_no_projects_returns_empty(self, override_db_path):
+        """Should handle no projects needing reflow"""
+        # 确保 50_Raw 为空
+        import shutil
+        raw_base = os.path.expanduser("~/.pkm/50_Raw")
+        if os.path.exists(raw_base):
+            shutil.rmtree(raw_base)
+
+        result = knowledge.run_stage2_cycle(batch_size=5)
+
+        assert result["processed"] == 0
+        assert result["succeeded"] == 0
+        assert result["failed"] == 0
+
+    def test_project_without_workspace_skipped(self, override_db_path):
+        """Should skip projects without workspace"""
+        from database import create_project
+        project = create_project(name="测试项目", workspace_path=None)
+
+        result = knowledge.run_stage2_cycle(batch_size=5)
+
+        assert result["failed"] == 1
+        assert "不存在" in result["errors"][0]["message"]
+
+    @patch("knowledge.classify_knowledge")
+    @patch("knowledge.check_duplicate")
+    @patch("knowledge.write_to_knowledge_base")
+    def test_successful_stage2(self, mock_write, mock_check, mock_classify, override_db_path, temp_workspace):
+        """Should successfully process project"""
+        mock_classify.return_value = "notes"
+        mock_check.return_value = (False, "new")
+        mock_write.return_value = "/path/to/file.md"
+
+        from database import create_project, update_project
+        project = create_project(name="测试项目", workspace_path=temp_workspace)
+
+        # Create project.md with knowledge section
+        project_md_path = os.path.join(temp_workspace, "project.md")
+        with open(project_md_path, "w") as f:
+            f.write("""# Project: 测试项目
+
+## 经验/方案索引
+### 2026-04-01 任务：测试任务
+- **任务ID**: test-id
+- **内容**: 测试知识内容
+""")
+
+        result = knowledge.run_stage2_cycle(batch_size=5)
+
+        assert result["processed"] == 1
+        assert result["succeeded"] == 1
+        assert result["failed"] == 0
+
+
+class TestGetStage2Status:
+    """Test Stage2 status retrieval"""
+
+    def test_status_returns_pending_projects(self, override_db_path):
+        """Should return Stage2 status with pending projects count"""
+        status = knowledge.get_stage2_status()
+
+        assert "pending_projects" in status
+        assert "config" in status
+        assert "claude_available" in status
+
+
+class TestProcessRawInbox:
+    """Test 50_Raw inbox processing"""
+
+    def setup_method(self):
+        """Create temp 50_Raw directory"""
+        self.temp_raw = tempfile.mkdtemp()
+        import knowledge
+        self.original_raw_base = knowledge.RAW_BASE
+        knowledge.RAW_BASE = self.temp_raw
+
+        # Create inbox subdirectory
+        self.inbox_dir = os.path.join(self.temp_raw, "inbox")
+        os.makedirs(self.inbox_dir, exist_ok=True)
+
+    def teardown_method(self):
+        """Restore original 50_Raw base"""
+        import knowledge
+        knowledge.RAW_BASE = self.original_raw_base
+        shutil.rmtree(self.temp_raw, ignore_errors=True)
+
+    def test_empty_raw_returns_empty_result(self):
+        """Should return empty result when no files"""
+        result = knowledge.process_raw_inbox()
+        assert result["processed"] == 0
+        assert result["succeeded"] == 0
+        assert result["failed"] == 0
+
+    def test_process_single_file(self):
+        """Should process single markdown file"""
+        # Create test file in inbox
+        test_file = os.path.join(self.inbox_dir, "test_inbox.md")
+        with open(test_file, "w", encoding="utf-8") as f:
+            f.write("这是一条测试笔记")
+
+        result = knowledge.process_raw_inbox()
+
+        assert result["processed"] == 1
+        assert result["succeeded"] == 1
+        # File should be deleted after processing
+        assert not os.path.exists(test_file)
+
+    @patch("knowledge.classify_knowledge")
+    @patch("knowledge.check_duplicate")
+    def test_duplicate_file_deleted(self, mock_check, mock_classify):
+        """Should delete file when duplicate is found"""
+        mock_classify.return_value = "notes"
+        mock_check.return_value = (True, "duplicate")
+
+        test_file = os.path.join(self.inbox_dir, "test_dup.md")
+        with open(test_file, "w", encoding="utf-8") as f:
+            f.write("重复内容")
+
+        result = knowledge.process_raw_inbox()
+
+        assert result["processed"] == 1
+        assert result["succeeded"] == 1
+        assert not os.path.exists(test_file)
+
+    def test_non_md_file_ignored(self):
+        """Should ignore non-markdown files"""
+        test_file = os.path.join(self.inbox_dir, "test.txt")
+        with open(test_file, "w", encoding="utf-8") as f:
+            f.write("Some text")
+
+        result = knowledge.process_raw_inbox()
+
+        # .txt files should be ignored
+        assert result["processed"] == 0
+        assert os.path.exists(test_file)  # File should still exist
+
+
+class TestRunStage2CycleWithRaw:
+    """Test Stage2 cycle with 50_Raw processing"""
+
+    def setup_method(self):
+        """Create temp 50_Raw directory"""
+        self.temp_raw = tempfile.mkdtemp()
+        import knowledge
+        self.original_raw_base = knowledge.RAW_BASE
+        knowledge.RAW_BASE = self.temp_raw
+
+        self.inbox_dir = os.path.join(self.temp_raw, "inbox")
+        os.makedirs(self.inbox_dir, exist_ok=True)
+
+    def teardown_method(self):
+        """Restore original 50_Raw base"""
+        import knowledge
+        knowledge.RAW_BASE = self.original_raw_base
+        shutil.rmtree(self.temp_raw, ignore_errors=True)
+
+    @patch("knowledge.classify_knowledge")
+    @patch("knowledge.check_duplicate")
+    def test_stage2_processes_raw_first(self, mock_check, mock_classify, override_db_path):
+        """Should process 50_Raw before projects"""
+        mock_classify.return_value = "notes"
+        mock_check.return_value = (False, "new")
+
+        # Create inbox file
+        test_file = os.path.join(self.inbox_dir, "test.md")
+        with open(test_file, "w", encoding="utf-8") as f:
+            f.write("测试内容")
+
+        result = knowledge.run_stage2_cycle(batch_size=5)
+
+        assert "raw_processed" in result
+        assert result["raw_processed"] == 1
+        assert result["raw_succeeded"] == 1

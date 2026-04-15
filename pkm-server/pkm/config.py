@@ -1,3 +1,4 @@
+import os
 import yaml
 from pathlib import Path
 
@@ -39,8 +40,21 @@ def load_config() -> dict:
 
 
 def get_port() -> int:
+    """Get internal port for server to listen on"""
     return load_config()["port"]
 
 
 def get_log_level() -> str:
     return load_config()["log_level"]
+
+
+def get_api_base() -> str:
+    """Get API base URL for CLI to connect to.
+    Priority: PKM_API_BASE env > host_port config > port config
+    """
+    if "PKM_API_BASE" in os.environ:
+        return os.environ["PKM_API_BASE"]
+    config = load_config()
+    # Use host_port if available (for docker setups), otherwise use port
+    host_port = config.get("host_port", config["port"])
+    return f"http://localhost:{host_port}"

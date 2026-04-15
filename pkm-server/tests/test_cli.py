@@ -3,6 +3,7 @@
 import pytest
 import subprocess
 import os
+from unittest.mock import patch, MagicMock
 
 PKM_CLI = "pkm"
 API_BASE = os.environ.get("PKM_API_BASE", "http://localhost:8890")
@@ -36,6 +37,13 @@ def wait_for_server():
         except requests.exceptions.ConnectionError:
             time.sleep(1)
     pytest.fail("Server did not start in time")
+
+
+@pytest.fixture
+def mock_api_base(monkeypatch):
+    """Mock API_BASE for direct CLI function tests"""
+    import pkm.cli
+    monkeypatch.setattr(pkm.cli, "API_BASE", "http://localhost:8890")
 
 
 class TestCLIHelp:
@@ -76,7 +84,6 @@ class TestCLIHelp:
         assert r.returncode == 0
         assert "Examples:" in r.stdout
         assert "priority" in r.stdout
-        assert "quadrant" in r.stdout
 
     def test_task_ls_help(self):
         """Task ls help should show examples"""
@@ -84,7 +91,6 @@ class TestCLIHelp:
         assert r.returncode == 0
         assert "Examples:" in r.stdout
         assert "--status" in r.stdout
-        assert "--quadrant" in r.stdout
 
 
 class TestCLITask:
@@ -93,16 +99,16 @@ class TestCLITask:
     def test_task_ls(self, wait_for_server):
         """Should list tasks"""
         # Create a task first to ensure there's data to list
-        run_cli('task add "测试CLI列表任务" --priority high --quadrant 1')
+        run_cli('task add "测试CLI列表任务" --priority high')
         r = run_cli("task ls")
         assert r.returncode == 0
-        # Output should contain task format: [id] title (status) - Q# [priority]
+        # Output should contain task format: [id] title (status) [priority]
         assert "]" in r.stdout
         assert "测试CLI列表任务" in r.stdout
 
     def test_task_add(self, wait_for_server):
         """Should add a new task"""
-        r = run_cli('task add "测试CLI添加任务" --priority high --quadrant 1')
+        r = run_cli('task add "测试CLI添加任务" --priority high')
         assert r.returncode == 0
         assert "Task created:" in r.stdout
 
@@ -112,14 +118,14 @@ class TestCLITask:
 
     def test_task_add_with_all_options(self, wait_for_server):
         """Should add task with all options"""
-        r = run_cli('task add "测试CLI全选项" --priority medium --quadrant 2 --due 2026-04-15')
+        r = run_cli('task add "测试CLI全选项" --priority medium --due 2026-04-15')
         assert r.returncode == 0
         assert "Task created:" in r.stdout
 
     def test_task_get(self, wait_for_server):
         """Should get task details"""
         # First create a task
-        r = run_cli('task add "测试CLI获取任务" --priority low --quadrant 4')
+        r = run_cli('task add "测试CLI获取任务" --priority low')
         assert r.returncode == 0
         task_id = r.stdout.split("Task created: ")[1].strip()
 
@@ -128,12 +134,11 @@ class TestCLITask:
         assert r.returncode == 0
         assert "测试CLI获取任务" in r.stdout
         assert "low" in r.stdout
-        assert "4" in r.stdout
 
     def test_task_update(self, wait_for_server):
         """Should update a task"""
         # Create task
-        r = run_cli('task add "测试CLI更新任务" --priority low --quadrant 4')
+        r = run_cli('task add "测试CLI更新任务" --priority low')
         task_id = r.stdout.split("Task created: ")[1].strip()
 
         # Update task
@@ -149,7 +154,7 @@ class TestCLITask:
     def test_task_done(self, wait_for_server):
         """Should mark task as completed"""
         # Create task
-        r = run_cli('task add "测试CLI完成任务" --priority medium --quadrant 2')
+        r = run_cli('task add "测试CLI完成任务" --priority medium')
         task_id = r.stdout.split("Task created: ")[1].strip()
 
         # Mark as done
@@ -164,7 +169,7 @@ class TestCLITask:
     def test_task_delete(self, wait_for_server):
         """Should delete a task"""
         # Create task
-        r = run_cli('task add "测试CLI删除任务" --priority low --quadrant 3')
+        r = run_cli('task add "测试CLI删除任务" --priority low')
         task_id = r.stdout.split("Task created: ")[1].strip()
 
         # Delete task
@@ -179,7 +184,7 @@ class TestCLITask:
     def test_task_ls_filter_by_status(self, wait_for_server):
         """Should filter tasks by status"""
         # Create and complete a task
-        r = run_cli('task add "测试CLI状态过滤" --priority medium --quadrant 2')
+        r = run_cli('task add "测试CLI状态过滤" --priority medium')
         task_id = r.stdout.split("Task created: ")[1].strip()
         run_cli(f"task done {task_id}")
 
@@ -187,18 +192,9 @@ class TestCLITask:
         r = run_cli("task ls --status done")
         assert "测试CLI状态过滤" in r.stdout
 
-        # List pending
-        r = run_cli("task ls --status pending")
+        # List new
+        r = run_cli("task ls --status new")
         assert "测试CLI状态过滤" not in r.stdout
-
-    def test_task_ls_filter_by_quadrant(self, wait_for_server):
-        """Should filter tasks by quadrant"""
-        run_cli('task add "测试CLI象限过滤Q1" --priority high --quadrant 1')
-        run_cli('task add "测试CLI象限过滤Q2" --priority medium --quadrant 2')
-
-        r = run_cli("task ls --quadrant 1")
-        assert "测试CLI象限过滤Q1" in r.stdout
-        assert "测试CLI象限过滤Q2" not in r.stdout
 
 
 class TestCLIProject:
@@ -282,23 +278,6 @@ class TestCLIProject:
         assert "测试CLI项目状态过滤" in r.stdout
 
 
-class TestCLIQuadrantExplanation:
-    """Test quadrant explanation in help"""
-
-    def test_quadrant_meaning_in_help(self):
-        """Help should explain quadrant meanings"""
-        r = run_cli("task --help")
-        assert "Q1=urgent+important" in r.stdout
-        assert "Q2=important" in r.stdout
-        assert "Q3=urgent" in r.stdout
-        assert "Q4=other" in r.stdout
-
-    def test_quadrant_option_help(self):
-        """Quadrant option should show Q1-Q4 meaning"""
-        r = run_cli("task add --help")
-        assert "Q1=1" in r.stdout or "Q1" in r.stdout
-
-
 class TestCLIServer:
     """Test CLI server commands"""
 
@@ -317,3 +296,181 @@ class TestCLIServer:
         r = run_cli("server stop")
         # Should handle gracefully (not running)
         assert r.returncode == 0
+
+
+class TestCLIInbox:
+    """Test CLI inbox commands"""
+
+    def test_inbox_help(self):
+        """Inbox help should show available commands"""
+        r = run_cli("inbox --help")
+        assert r.returncode == 0
+        assert "add" in r.stdout
+
+    def test_inbox_add_help(self):
+        """Inbox add help should show examples"""
+        r = run_cli("inbox add --help")
+        assert r.returncode == 0
+        assert "Examples:" in r.stdout
+        assert "--parse" in r.stdout
+
+    def test_inbox_add_basic(self, wait_for_server):
+        """Should add content to inbox"""
+        r = run_cli("inbox add test_content")
+        assert r.returncode == 0
+        assert "Captured to inbox" in r.stdout
+        assert "_inbox.md" in r.stdout
+
+    def test_inbox_add_with_parse_flag(self, wait_for_server):
+        """Should add content with parse flag (without actual URL)"""
+        r = run_cli("inbox add --parse test_parse")
+        assert r.returncode == 0
+        # 即使没有有效 URL 也应该能保存
+        assert "Captured to inbox" in r.stdout or "Warning" in r.stdout
+
+    def test_inbox_add_empty_content(self):
+        """Should handle empty content"""
+        r = run_cli("inbox add")
+        # 不带内容参数应该报错
+        assert r.returncode != 0
+
+
+class TestCLIProjectPath:
+    """Test project list with path option"""
+
+    def test_project_ls_path(self, wait_for_server):
+        """Should show project workspace path with -p flag"""
+        run_cli('project add "测试项目路径"')
+        r = run_cli("project ls -p")
+        assert r.returncode == 0
+        # Should show a path
+        assert "/" in r.stdout or "~" in r.stdout
+
+
+class TestCLIProjectUpdate:
+    """Test project update command"""
+
+    def test_project_update_name_only(self, wait_for_server):
+        """Should update project name only"""
+        r = run_cli('project add "测试项目更新"')
+        project_id = r.stdout.split("Project created: ")[1].strip()
+        r = run_cli(f"project update {project_id} --name '新名称'")
+        assert r.returncode == 0
+        assert "Project updated" in r.stdout
+
+    def test_project_update_description_only(self, wait_for_server):
+        """Should update project description only"""
+        r = run_cli('project add "测试描述更新"')
+        project_id = r.stdout.split("Project created: ")[1].strip()
+        r = run_cli(f"project update {project_id} --description '新描述'")
+        assert r.returncode == 0
+        assert "Project updated" in r.stdout
+
+
+class TestCLITaskApprove:
+    """Test task approve command"""
+
+    def test_task_approve(self, wait_for_server):
+        """Should approve a task for reflow"""
+        # Create and complete a task
+        r = run_cli('task add "测试CLI批准任务" --priority high')
+        task_id = r.stdout.split("Task created: ")[1].strip()
+        run_cli(f"task done {task_id}")
+
+        # Approve task
+        r = run_cli(f"task approve {task_id}")
+        assert r.returncode == 0
+        assert "approved" in r.stdout.lower()
+
+
+class TestCLITaskUpdateProgress:
+    """Test task update with progress"""
+
+    def test_task_update_progress(self, wait_for_server):
+        """Should update task progress"""
+        r = run_cli('task add "测试进度更新" --priority medium')
+        task_id = r.stdout.split("Task created: ")[1].strip()
+
+        r = run_cli(f"task update {task_id} --progress 50")
+        assert r.returncode == 0
+        assert "Task updated" in r.stdout
+
+        # Verify
+        r = run_cli(f"task get {task_id}")
+        assert "50" in r.stdout
+
+    def test_task_update_status(self, wait_for_server):
+        """Should update task status"""
+        r = run_cli('task add "测试状态更新" --priority medium')
+        task_id = r.stdout.split("Task created: ")[1].strip()
+
+        r = run_cli(f"task update {task_id} --status active")
+        assert r.returncode == 0
+        assert "Task updated" in r.stdout
+
+
+class TestCLIReflow:
+    """Test reflow commands"""
+
+    def test_reflow_run_help(self):
+        """Reflow run help should show usage"""
+        r = run_cli("reflow run --help")
+        assert r.returncode == 0
+
+    def test_reflow_status_help(self):
+        """Reflow status help should show usage"""
+        r = run_cli("reflow status --help")
+        assert r.returncode == 0
+
+    def test_reflow_stage2_help(self):
+        """Reflow stage2 help should show usage"""
+        r = run_cli("reflow stage2 --help")
+        assert r.returncode == 0
+        assert "--batch-size" in r.stdout
+
+    def test_reflow_run(self, wait_for_server):
+        """Should trigger reflow"""
+        r = run_cli("reflow run")
+        assert r.returncode == 0
+        assert "Starting" in r.stdout or "completed" in r.stdout
+
+    def test_reflow_status(self, wait_for_server):
+        """Should get reflow status"""
+        r = run_cli("reflow status")
+        assert r.returncode == 0
+        assert "Pending" in r.stdout or "Claude" in r.stdout
+
+    def test_reflow_stage2(self, wait_for_server):
+        """Should trigger stage2"""
+        r = run_cli("reflow stage2")
+        assert r.returncode == 0
+        assert "Starting" in r.stdout or "completed" in r.stdout
+
+
+class TestCLIErrorHandling:
+    """Test CLI error handling"""
+
+    def test_task_get_nonexistent(self, wait_for_server):
+        """Should handle getting non-existent task"""
+        r = run_cli("task get nonexistent-id-12345")
+        assert r.returncode != 0
+
+    def test_task_update_nonexistent(self, wait_for_server):
+        """Should handle updating non-existent task"""
+        r = run_cli("task update nonexistent-id-12345 --title '新标题'")
+        assert r.returncode != 0
+
+    def test_task_delete_nonexistent(self, wait_for_server):
+        """Should handle deleting non-existent task"""
+        r = run_cli("task delete nonexistent-id-12345")
+        assert r.returncode != 0
+
+    def test_project_get_nonexistent(self, wait_for_server):
+        """Should handle getting non-existent project"""
+        r = run_cli("project get nonexistent-id-12345")
+        assert r.returncode != 0
+
+    def test_project_update_nonexistent(self, wait_for_server):
+        """Should handle updating non-existent project"""
+        r = run_cli("project update nonexistent-id-12345 --name '新名称'")
+        assert r.returncode != 0

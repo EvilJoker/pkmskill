@@ -1,0 +1,97 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## 项目概述
+PKM (Personal Knowledge Management) - 任务和项目管理服务，基于 FastAPI + SQLite + Click CLI
+
+## 常用命令
+```bash
+# 安装依赖
+make install
+
+# 构建 wheel 包
+make build-client
+
+# 构建 Docker 镜像
+make build-server
+
+# 启动服务
+make start
+
+# 查看日志
+make logs
+
+# 运行测试（CI 使用，包含覆盖率检查，本地不要使用）
+make test
+
+# 本地测试（使用 docker-compose.dev.yml，包含覆盖率验证）
+make test-local
+
+# 运行部署测试（CI 使用， 本地不使用）
+make test-deploy
+```
+
+## 测试注意事项
+**重要：不要删除用户的实际数据！**
+- 本地测试使用 `make test-local`（使用 docker-compose.dev.yml）
+- `make test` 使用 docker-compose.yml
+- **禁止执行** `docker exec pkm-server rm -f /root/.pkm/pkm.db` — 这会删除用户实际数据
+- 测试运行在容器内，使用的是容器内的数据库，不是本地测试数据库
+- 代码修改后需要重建镜像再测试：`docker compose build --no-cache && docker compose up -d`
+
+## 代码质量要求
+- **行覆盖率**: 75% 以上
+- **分支覆盖率**: 55% 以上（当前可达值）
+
+## CI/CD 流程
+
+### Workflows
+- **snapshot.yml**: 构建 + 测试 + 发布制品（push main 时触发）
+- **deploy.yml**: 部署验证（push main 时触发，下载安装最新发布版本）
+- **base-image.yml**: 构建基础镜像（push base-image 分支时触发）
+
+### 流程约束
+**每次推送到远端后，必须检查 CI 执行结果，如果失败需要修复：**
+- 检查 `Snapshot CI` workflow：构建、测试、发布是否成功
+- 检查 `Deploy Test` workflow：部署安装是否成功
+- 任一 workflow 失败都需要定位并修复问题后再次推送
+
+### 基础镜像构建
+**重要：基础镜像（ghcr.io/eviljoker/pkm:base-latest）在 GitHub Actions 远端构建，本地不要尝试构建。**
+
+如果修改了 `requirements.txt` 或 `Dockerfile.base`：
+1. 推送代码后，远端会自动触发 `base-image.yml` workflow
+2. 构建完成后会推送新镜像到 ghcr.io
+3. 等待基础镜像构建完成后，再触发业务镜像构建
+
+### 本地开发
+**本地开发使用 docker-compose.dev.yml（基于 base-latest 本地构建）：**
+```bash
+make start-dev  # 本地构建 + 启动
+make status     # 检查服务状态
+make logs       # 查看日志
+make clean      # 清理容器
+```
+
+**生产环境使用 docker-compose.prod.yml（远程镜像）：**
+```bash
+make start      # 使用 snapshot 镜像启动
+```
+
+**本地开发流程：**
+1. 修改代码
+2. `make start-dev` 重新构建并启动
+3. `make status` 验证服务状态
+4. 测试完成后 `make clean` 清理
+
+## 架构
+- `main.py` - FastAPI 应用，定义所有 REST API 端点
+- `database.py` - SQLite 数据库操作层
+- `models.py` - Pydantic 数据模型
+- `pkm/cli.py` - Click CLI 命令行接口
+- `pkm/config.py` - 配置文件加载模块
+
+## 配置
+- 默认配置路径: `~/.pkm/config.yaml`
+- 环境变量: `PKM_API_BASE` 可覆盖 API 地址（容器内测试时设为 `http://localhost:7890`）

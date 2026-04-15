@@ -1,0 +1,15 @@
+services:
+  pkm-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: pkm:local
+    container_name: pkm-server-dev
+    ports:
+      - "8891:7890"
+    volumes:
+      - .:/app
+      - ~/.pkm_dev:/root/.pkm
+      - ~/.pkm_dev/logs:/root/.pkm/logs
+    working_dir: /app
+    restart: unless-stopped

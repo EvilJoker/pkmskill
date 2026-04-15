@@ -7,6 +7,7 @@ setup(
     install_requires=[
         "click>=8.1.7",
         "requests>=2.31.0",
+        "apscheduler>=3.10.0",
     ],
     entry_points={
         "console_scripts": [

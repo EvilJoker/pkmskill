@@ -20,16 +20,17 @@ def init_db():
                 workspace_path TEXT,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL,
-                completed_at TEXT
+                completed_at TEXT,
+                refined INTEGER DEFAULT 0,
+                refined_at TEXT
             )
         """)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS tasks (
                 id TEXT PRIMARY KEY,
                 title TEXT NOT NULL,
-                status TEXT DEFAULT 'pending',
+                status TEXT DEFAULT 'new',
                 priority TEXT DEFAULT 'medium',
-                quadrant INTEGER DEFAULT 2,
                 project_id TEXT,
                 progress TEXT,
                 due_date TEXT,
@@ -45,7 +46,7 @@ def init_db():
                 id INTEGER PRIMARY KEY,
                 task_id TEXT NOT NULL,
                 project_id TEXT NOT NULL,
-                status TEXT DEFAULT 'pending',
+                status TEXT DEFAULT 'new',
                 reflowed_at TEXT,
                 error TEXT,
                 created_at TEXT NOT NULL
@@ -54,6 +55,15 @@ def init_db():
         cursor.execute("""
             CREATE INDEX IF NOT EXISTS idx_reflow_status ON knowledge_reflow(status)
         """)
+        # 添加 refined 和 refined_at 字段（如果不存在）
+        try:
+            cursor.execute("ALTER TABLE projects ADD COLUMN refined INTEGER DEFAULT 0")
+        except sqlite3.OperationalError:
+            pass  # 列已存在
+        try:
+            cursor.execute("ALTER TABLE projects ADD COLUMN refined_at TEXT")
+        except sqlite3.OperationalError:
+            pass  # 列已存在
         conn.commit()
 
 
@@ -146,7 +156,7 @@ def delete_project(project_id: str) -> bool:
 
 
 # Task CRUD
-def create_task(title: str, priority: str = "medium", quadrant: int = 2,
+def create_task(title: str, priority: str = "medium",
                 project_id: Optional[str] = None, progress: Optional[str] = None,
                 due_date: Optional[str] = None, workspace_path: Optional[str] = None) -> dict:
     import uuid
@@ -154,9 +164,8 @@ def create_task(title: str, priority: str = "medium", quadrant: int = 2,
     task = {
         "id": str(uuid.uuid4()),
         "title": title,
-        "status": "pending",
+        "status": "new",
         "priority": priority,
-        "quadrant": quadrant,
         "project_id": project_id,
         "progress": progress,
         "due_date": due_date,
@@ -168,9 +177,9 @@ def create_task(title: str, priority: str = "medium", quadrant: int = 2,
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute(
-            "INSERT INTO tasks (id, title, status, priority, quadrant, project_id, progress, due_date, workspace_path, created_at, updated_at, completed_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (task["id"], task["title"], task["status"], task["priority"], task["quadrant"],
+            "INSERT INTO tasks (id, title, status, priority, project_id, progress, due_date, workspace_path, created_at, updated_at, completed_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (task["id"], task["title"], task["status"], task["priority"],
              task["project_id"], task["progress"], task["due_date"], task["workspace_path"],
              task["created_at"], task["updated_at"], task["completed_at"])
         )
@@ -184,8 +193,7 @@ def get_task(task_id: str) -> Optional[dict]:
         return row_to_task(cursor.fetchone())
 
 
-def list_tasks(status: Optional[str] = None, project_id: Optional[str] = None,
-               quadrant: Optional[int] = None) -> List[dict]:
+def list_tasks(status: Optional[str] = None, project_id: Optional[str] = None) -> List[dict]:
     with get_db() as conn:
         cursor = conn.cursor()
         query = "SELECT * FROM tasks WHERE 1=1"
@@ -196,16 +204,13 @@ def list_tasks(status: Optional[str] = None, project_id: Optional[str] = None,
         if project_id:
             query += " AND project_id = ?"
             params.append(project_id)
-        if quadrant is not None:
-            query += " AND quadrant = ?"
-            params.append(quadrant)
         query += " ORDER BY created_at DESC"
         cursor.execute(query, params)
         return [row_to_task(row) for row in cursor.fetchall()]
 
 
 def update_task(task_id: str, **kwargs) -> Optional[dict]:
-    allowed = ["title", "status", "priority", "quadrant", "project_id", "progress", "due_date", "workspace_path"]
+    allowed = ["title", "status", "priority", "project_id", "progress", "due_date", "workspace_path"]
     kwargs = {k: v for k, v in kwargs.items() if k in allowed and v is not None}
     if not kwargs:
         return get_task(task_id)
@@ -245,7 +250,7 @@ def create_reflow(task_id: str, project_id: str) -> dict:
         "id": None,
         "task_id": task_id,
         "project_id": project_id,
-        "status": "pending",
+        "status": "new",
         "reflowed_at": None,
         "error": None,
         "created_at": now
@@ -254,7 +259,7 @@ def create_reflow(task_id: str, project_id: str) -> dict:
         cursor = conn.cursor()
         cursor.execute(
             "INSERT INTO knowledge_reflow (task_id, project_id, status, created_at) VALUES (?, ?, ?, ?)",
-            (task_id, project_id, "pending", now)
+            (task_id, project_id, "new", now)
         )
         reflow["id"] = cursor.lastrowid
     return reflow
@@ -293,6 +298,32 @@ def list_pending_reflows() -> List[dict]:
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute(
-            "SELECT * FROM knowledge_reflow WHERE status IN ('pending', 'processing') ORDER BY created_at"
+            "SELECT * FROM knowledge_reflow WHERE status IN ('new', 'processing') ORDER BY created_at"
         )
         return [dict(row) for row in cursor.fetchall()]
+
+
+# Stage2: 项目提炼相关
+def get_projects_needing_reflow(limit: int = 5) -> List[dict]:
+    """获取需要提炼的项目（未提炼或已更新）"""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT * FROM projects
+            WHERE status = 'active'
+            AND (refined = 0 OR refined_at IS NULL OR updated_at > refined_at)
+            ORDER BY updated_at DESC
+            LIMIT ?
+        """, (limit,))
+        return [row_to_project(row) for row in cursor.fetchall()]
+
+
+def mark_project_refined(project_id: str) -> None:
+    """标记项目已提炼"""
+    now = datetime.utcnow().isoformat()
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE projects SET refined = 1, refined_at = ? WHERE id = ?",
+            (now, project_id)
+        )

@@ -1,16 +1,25 @@
 import sys
 import os
+import logging
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional, List
+from apscheduler.schedulers.background import BackgroundScheduler
 
 from models import Task, TaskCreate, TaskUpdate, Project, ProjectCreate, ProjectUpdate
 import database
 from pkm.config import get_port
+from logging_config import setup_logging, get_logger
+
+# 初始化日志
+setup_logging()
+logger = get_logger(__name__)
 
 app = FastAPI(title="PKM Server")
+
+scheduler = BackgroundScheduler()
 
 app.add_middleware(
     CORSMiddleware,
@@ -23,16 +32,45 @@ app.add_middleware(
 
 @app.on_event("startup")
 def startup():
+    logger.info("PKM Server starting...")
+
     database.init_db()
+    logger.info("Database initialized")
+
     # 创建 default 项目工作区
     from pkm.workspace import create_default_project_workspace, get_default_project_workspace
     create_default_project_workspace()
+    logger.info("Default project workspace ready")
+
     # 检查 Claude CLI 环境
     from knowledge import check_claude_environment
     claude_ok, claude_msg = check_claude_environment()
     if not claude_ok:
-        import logging
-        logging.warning(f"Claude CLI 检查失败: {claude_msg}")
+        logger.warning(f"Claude CLI 检查失败: {claude_msg}")
+    else:
+        logger.info("Claude CLI 环境正常")
+
+    # 启动定时任务调度器
+    from knowledge import run_reflow_cycle, run_stage2_cycle
+
+    # Stage1: 每 3 小时整点执行
+    scheduler.add_job(run_reflow_cycle, 'cron', minute=0)
+    logger.info("Stage1 cron job registered (minute=0, interval=3h)")
+
+    # Stage2: 每 3 小时 +30 分钟执行
+    scheduler.add_job(run_stage2_cycle, 'cron', minute=30)
+    logger.info("Stage2 cron job registered (minute=30, interval=3h)")
+
+    scheduler.start()
+    logger.info("Scheduler started")
+    logger.info("PKM Server started on http://0.0.0.0:7890")
+
+
+@app.on_event("shutdown")
+def shutdown():
+    logger.info("PKM Server shutting down...")
+    scheduler.shutdown()
+    logger.info("PKM Server stopped")
 
 
 @app.get("/health")
@@ -88,7 +126,6 @@ def create_task(task: TaskCreate):
     return database.create_task(
         title=task.title,
         priority=task.priority.value,
-        quadrant=task.quadrant,
         project_id=task.project_id,
         progress=task.progress,
         due_date=str(task.due_date) if task.due_date else None,
@@ -97,9 +134,8 @@ def create_task(task: TaskCreate):
 
 
 @app.get("/api/tasks", response_model=List[Task])
-def list_tasks(status: Optional[str] = None, project_id: Optional[str] = None,
-               quadrant: Optional[int] = None):
-    return database.list_tasks(status, project_id, quadrant)
+def list_tasks(status: Optional[str] = None, project_id: Optional[str] = None):
+    return database.list_tasks(status, project_id)
 
 
 @app.get("/api/tasks/{task_id}", response_model=Task)
@@ -191,3 +227,25 @@ def approve_task_reflow(task_id: str):
         raise HTTPException(status_code=400, detail=f"Task status is {task['status']}, expected done")
     updated = update_task(task_id, status="approved")
     return updated
+
+
+# Stage2 APIs
+@app.post("/api/knowledge/reflow/stage2")
+def trigger_stage2():
+    """手动触发 Stage2 提炼"""
+    from knowledge import run_stage2_cycle
+    result = run_stage2_cycle(batch_size=5)
+    return {
+        "triggered": True,
+        "processed": result["processed"],
+        "succeeded": result["succeeded"],
+        "failed": result["failed"],
+        "message": f"处理了 {result['processed']} 个项目，成功 {result['succeeded']}，失败 {result['failed']}"
+    }
+
+
+@app.get("/api/knowledge/reflow/status/stage2")
+def get_stage2_status():
+    """获取 Stage2 状态"""
+    from knowledge import get_stage2_status as get_status
+    return get_status()
