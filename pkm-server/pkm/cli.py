@@ -438,7 +438,10 @@ def add(name, description):
 
     Examples:
       pkm project add "我的项目"
-      pkm project add "PKM优化" --description "优化任务管理"""
+      pkm project add "PKM优化" --description "优化任务管理和CLI优化"
+
+    # 完整示例
+      pkm project add "新项目" --description "项目描述"""
     payload = {"name": name}
     if description:
         payload["description"] = description
@@ -463,7 +466,13 @@ def ls(status, show_path):
     Examples:
       pkm project ls
       pkm project ls --status active
-      pkm project ls -p"""
+      pkm project ls --status archived
+      pkm project ls -p
+      pkm project ls --status active -p
+
+    # 查看所有状态的项目
+      pkm project ls --status active
+      pkm project ls --status archived"""
     params = {}
     if status:
         params["status"] = status
@@ -520,7 +529,12 @@ def ls(status, show_path):
 def get(project_id):
     """Get project details
 
-    Example:
+    Examples:
+      pkm project get ccec0f66
+      pkm project get 1
+      pkm project get default
+
+    # 获取项目详情（可用 ID、序号或 default）
       pkm project get ccec0f66"""
     r = requests.get(f"{API_BASE}/api/projects/{project_id}")
     r.raise_for_status()
@@ -541,7 +555,18 @@ def update(project_id, name, description):
 
     Examples:
       pkm project update ccec0f66 --name "新名称"
-      pkm project update ccec0f66 --description "新描述"""
+      pkm project update ccec0f66 --description "新描述"
+      pkm project update ccec0f66 --name "名称" --description "描述"
+      pkm project update 1 --name "新名称"
+
+    # 修改项目名称
+      pkm project update ccec0f66 --name "优化后的项目名"
+
+    # 修改项目描述
+      pkm project update ccec0f66 --description "项目用于XXX"
+
+    # 同时修改名称和描述
+      pkm project update ccec0f66 --name "新名称" --description "新描述"""
     payload = {}
     if name:
         payload["name"] = name
@@ -560,7 +585,15 @@ def delete(project_id):
     Examples:
       pkm project delete ccec0f66
       pkm project delete 2
-      pkm project delete default"""
+      pkm project delete default
+
+    # 通过 ID 删除
+      pkm project delete ccec0f66
+
+    # 通过序号删除（删除列表中的第2个项目）
+      pkm project delete 2
+
+    # 注意：不能删除 default 项目"""
     # 如果是数字序号，需要计算正确的索引（跳过 default 项目）
     if project_id.isdigit():
         idx = int(project_id)
@@ -620,7 +653,11 @@ def delete(project_id):
 def archive(project_id):
     """Archive a project
 
-    Example:
+    Examples:
+      pkm project archive ccec0f66
+      pkm project archive 1
+
+    # 归档项目（归档后可使用 --status archived 查看）
       pkm project archive ccec0f66"""
     r = requests.post(f"{API_BASE}/api/projects/{project_id}/archive")
     r.raise_for_status()
