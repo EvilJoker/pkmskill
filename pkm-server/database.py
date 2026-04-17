@@ -78,16 +78,23 @@ def get_db():
         conn.close()
 
 
+def rows_to_dicts(rows) -> List[dict]:
+    """Convert a list of sqlite3.Row objects to dicts"""
+    return [dict(row) for row in rows]
+
+
+def row_to_dict(row) -> dict:
+    """Convert a sqlite3.Row to dict, returns None if row is falsy"""
+    return dict(row) if row else None
+
+
+# Backward compatibility aliases
 def row_to_task(row) -> dict:
-    if not row:
-        return None
-    return dict(row)
+    return row_to_dict(row)
 
 
 def row_to_project(row) -> dict:
-    if not row:
-        return None
-    return dict(row)
+    return row_to_dict(row)
 
 
 # Project CRUD
@@ -292,8 +299,7 @@ def get_reflow_by_task(task_id: str) -> Optional[dict]:
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM knowledge_reflow WHERE task_id = ?", (task_id,))
-        row = cursor.fetchone()
-        return dict(row) if row else None
+        return row_to_dict(cursor.fetchone())
 
 
 def update_reflow_status(reflow_id: int, status: str, error: Optional[str] = None) -> None:
@@ -323,7 +329,7 @@ def list_pending_reflows() -> List[dict]:
         cursor.execute(
             "SELECT * FROM knowledge_reflow WHERE status IN ('new', 'processing') ORDER BY created_at"
         )
-        return [dict(row) for row in cursor.fetchall()]
+        return rows_to_dicts(cursor.fetchall())
 
 
 # Stage2: 项目提炼相关

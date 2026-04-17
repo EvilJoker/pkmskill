@@ -12,11 +12,7 @@ from database import (
 )
 from pkm.workspace import get_default_project_workspace, archive_task_workspace, get_project_workspace_base
 
-# 配置日志
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+# 使用项目统一的日志配置（logging_config.py 已配置）
 logger = logging.getLogger(__name__)
 
 # Claude CLI 路径
@@ -51,8 +47,8 @@ def check_claude_environment() -> Tuple[bool, str]:
         return False, "Claude CLI 未安装，请先安装 Claude Code"
     except subprocess.TimeoutExpired:
         return False, "Claude CLI 调用超时"
-    except Exception as e:
-        return False, f"Claude CLI 调用失败: {str(e)}"
+    except (OSError, subprocess.CalledProcessError) as e:
+        return False, f"Claude CLI 调用失败: {e}"
 
 
 def should_exclude_file(filename: str) -> bool:
@@ -82,7 +78,7 @@ def read_task_workspace_content(workspace_path: str) -> str:
                 with open(filepath, "r", encoding="utf-8") as f:
                     rel_path = os.path.relpath(filepath, workspace_path)
                     contents.append(f"=== {rel_path} ===\n{f.read()}\n")
-            except Exception:
+            except (UnicodeDecodeError, OSError, IOError):
                 pass
 
     return "\n".join(contents)
@@ -133,8 +129,8 @@ def extract_knowledge_with_claude(content: str, max_retries: int = 3) -> str:
             if attempt < max_retries - 1:
                 continue  # 重试
             return "[Claude 调用超时]"
-        except Exception as e:
-            return f"[Claude 调用异常: {str(e)}"
+        except (OSError, subprocess.CalledProcessError) as e:
+            return f"[Claude 调用异常: {e}]"
     return "[Claude 调用失败]"
 
 
@@ -241,7 +237,7 @@ def process_single_task_reflow(task_id: str) -> Tuple[bool, str]:
 
         return True, "回流成功"
 
-    except Exception as e:
+    except (subprocess.TimeoutExpired, OSError, subprocess.CalledProcessError, IOError) as e:
         update_reflow_status(reflow["id"], "failed", str(e))
         return False, f"回流失败: {str(e)}"
 
@@ -354,7 +350,7 @@ def find_similar_file(content, classification):
                 resp = result.stdout.strip().lower()
                 if resp == "similar":
                     return filepath
-        except:
+        except (subprocess.TimeoutExpired, OSError, subprocess.CalledProcessError):
             pass
     return None
 
@@ -424,7 +420,7 @@ def process_raw_inbox():
                 processed += 1
                 succeeded += 1
 
-            except Exception as e:
+            except (OSError, IOError) as e:
                 errors.append({"file": filepath, "error": str(e)})
                 failed += 1
 
@@ -473,7 +469,7 @@ def classify_knowledge(content: str) -> str:
             if classification in ["principles", "playbooks", "templates", "cases", "notes"]:
                 return classification
         return "notes"  # 默认
-    except:
+    except (subprocess.TimeoutExpired, OSError, subprocess.CalledProcessError):
         return "notes"
 
 
@@ -514,7 +510,7 @@ def check_duplicate(content: str, target_dir: str) -> Tuple[bool, str]:
                     return True, "duplicate"
                 elif resp == "similar":
                     return True, "similar"
-        except:
+        except (subprocess.TimeoutExpired, OSError, subprocess.CalledProcessError):
             pass
     return False, "new"
 
@@ -638,7 +634,7 @@ def run_stage2_cycle(batch_size: int = 5) -> Dict:
             succeeded += 1
             logger.info(f"Project refined: {project_name}, wrote {items_written} knowledge items")
 
-        except Exception as e:
+        except (subprocess.TimeoutExpired, OSError, subprocess.CalledProcessError, IOError) as e:
             logger.error(f"Project reflow error: {project_id} - {str(e)}")
             errors.append({"project_id": project_id, "message": str(e)})
             failed += 1

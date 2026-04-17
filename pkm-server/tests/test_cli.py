@@ -340,19 +340,18 @@ class TestCLIServer:
 
     def test_server_status(self, wait_for_server):
         """Should check server status"""
-        r = run_cli("server status")
-        assert r.returncode == 0
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="")
+            r = run_cli("server status")
+            assert r.returncode == 0
 
     def test_server_stop_when_not_running(self):
         """Should handle server stop when not running"""
-        # Remove PID file if it exists
-        import os
-        pid_file = os.path.expanduser("~/.pkm/pkm-server.pid")
-        if os.path.exists(pid_file):
-            os.remove(pid_file)
-        r = run_cli("server stop")
-        # Should handle gracefully (not running)
-        assert r.returncode == 0
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0)
+            r = run_cli("server stop")
+            # Should handle gracefully (not running)
+            assert r.returncode == 0
 
 
 class TestCLIInbox:
@@ -613,31 +612,6 @@ class TestCLIHelperFunctions:
         assert "#" not in filename
         assert "/" not in filename
 
-    def test_get_pid_no_file(self, tmp_path):
-        """Test get_pid when PID file does not exist"""
-        from pkm.cli import get_pid, PID_FILE
-        import pkm.cli
-        original = pkm.cli.PID_FILE
-        pkm.cli.PID_FILE = str(tmp_path / "nonexistent.pid")
-        try:
-            pid = get_pid()
-            assert pid is None
-        finally:
-            pkm.cli.PID_FILE = original
-
-    def test_save_pid(self, tmp_path):
-        """Test save_pid creates file with PID"""
-        from pkm.cli import save_pid, get_pid, PID_FILE
-        import pkm.cli
-        original = pkm.cli.PID_FILE
-        pkm.cli.PID_FILE = str(tmp_path / "test.pid")
-        try:
-            save_pid(12345)
-            pid = get_pid()
-            assert pid == "12345"
-        finally:
-            pkm.cli.PID_FILE = original
-
     def test_is_server_running_true(self, monkeypatch):
         """Test is_server_running when server is up"""
         from pkm.cli import is_server_running
@@ -707,7 +681,7 @@ class TestCLIHelperFunctions:
         from pkm.cli import parse_url_with_claude
 
         def mock_run(*args, **kwargs):
-            raise Exception("Some error")
+            raise OSError("Some error")
 
         monkeypatch.setattr("subprocess.run", mock_run)
         result = parse_url_with_claude("https://example.com", "test note")
@@ -717,34 +691,17 @@ class TestCLIHelperFunctions:
 class TestCLIServerFunctions:
     """Test CLI server helper functions"""
 
-    def test_server_stop_no_pid(self, monkeypatch, tmp_path):
-        """Test server_stop when no PID file exists"""
-        from pkm.cli import server_stop, PID_FILE
+    def test_server_stop_calls_compose_down(self, monkeypatch):
+        """Test server_stop calls docker compose down"""
+        from pkm.cli import server_stop, _server_stop
         import pkm.cli
 
-        original = pkm.cli.PID_FILE
-        pkm.cli.PID_FILE = str(tmp_path / "nonexistent.pid")
-        monkeypatch.setattr("pkm.cli.click.echo", lambda x: None)
-        try:
-            server_stop()  # Should not raise, just return
-        finally:
-            pkm.cli.PID_FILE = original
-
-    def test_server_stop_process_not_found(self, monkeypatch, tmp_path):
-        """Test server_stop when process does not exist"""
-        from pkm.cli import server_stop, PID_FILE
-        import pkm.cli
-
-        original = pkm.cli.PID_FILE
-        pkm.cli.PID_FILE = str(tmp_path / "test.pid")
-        # Write an invalid PID
-        with open(pkm.cli.PID_FILE, "w") as f:
-            f.write("999999999")
-        monkeypatch.setattr("pkm.cli.click.echo", lambda x: None)
-        try:
-            server_stop()  # Should handle ProcessLookupError
-        finally:
-            pkm.cli.PID_FILE = original
+        called = []
+        def mock_server_stop():
+            called.append(True)
+        monkeypatch.setattr(pkm.cli, "_server_stop", mock_server_stop)
+        server_stop()
+        assert called, "server_cmd.server_stop should be called"
 
     def test_server_status_running(self, monkeypatch):
         """Test server_status when server is running"""
@@ -753,9 +710,11 @@ class TestCLIServerFunctions:
 
         captured = []
         monkeypatch.setattr(click, "echo", lambda x: captured.append(x))
+        monkeypatch.setattr("pkm.cli._is_container_running", lambda: True)
         monkeypatch.setattr("pkm.cli.is_server_running", lambda: True)
         server_status()
         assert "running" in captured[0].lower()
+        assert "ready" in captured[1].lower()
 
     def test_server_status_not_running(self, monkeypatch):
         """Test server_status when server is not running"""
@@ -764,53 +723,22 @@ class TestCLIServerFunctions:
 
         captured = []
         monkeypatch.setattr(click, "echo", lambda x: captured.append(x))
-        monkeypatch.setattr("pkm.cli.is_server_running", lambda: False)
+        monkeypatch.setattr("pkm.cli._is_container_running", lambda: False)
         server_status()
         assert "not running" in captured[0].lower()
-
-    def test_server_stop_success(self, monkeypatch, tmp_path):
-        """Test server_stop when process is successfully stopped"""
-        from pkm.cli import server_stop, PID_FILE
-        import pkm.cli
-        import os
-        import signal
-        import click
-
-        original = pkm.cli.PID_FILE
-        pkm.cli.PID_FILE = str(tmp_path / "test.pid")
-        # Write a valid PID (use current process as mock)
-        with open(pkm.cli.PID_FILE, "w") as f:
-            f.write(str(os.getpid()))
-
-        captured = []
-        monkeypatch.setattr(click, "echo", lambda x: captured.append(x))
-        # Mock os.kill to not actually kill, but verify it's called
-        killed = []
-        def mock_kill(pid, sig):
-            killed.append((pid, sig))
-        monkeypatch.setattr(os, "kill", mock_kill)
-        # Mock os.remove to verify it's called
-        removed = []
-        def mock_remove(path):
-            removed.append(path)
-        monkeypatch.setattr(os, "remove", mock_remove)
-
-        try:
-            server_stop()
-            assert len(killed) == 1
-            assert killed[0][1] == signal.SIGTERM
-            assert "Server stopped" in captured
-            assert str(pkm.cli.PID_FILE) in removed
-        finally:
-            pkm.cli.PID_FILE = original
 
     def test_server_start_already_running(self, monkeypatch):
         """Test server_start when server is already running"""
         from pkm.cli import server_start
         import click
+        from unittest.mock import patch, MagicMock
+        from pathlib import Path
 
         captured = []
         monkeypatch.setattr(click, "echo", lambda x: captured.append(x))
-        monkeypatch.setattr("pkm.cli.is_server_running", lambda: True)
-        server_start()
+        monkeypatch.setattr("pkm.cli._is_container_running", lambda: True)
+
+        with patch("subprocess.run", return_value=MagicMock(returncode=0)):
+            with patch("pathlib.Path.exists", return_value=True):
+                server_start()
         assert "already running" in captured[0]

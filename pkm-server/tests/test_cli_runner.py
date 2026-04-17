@@ -290,18 +290,18 @@ class TestCLIServer:
 
     def test_server_status(self, runner, wait_for_server):
         """Should check server status"""
-        result = runner.invoke(server, ["status"], catch_exceptions=False)
-        assert result.exit_code == 0
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="")
+            result = runner.invoke(server, ["status"], catch_exceptions=False)
+            assert result.exit_code == 0
 
     def test_server_stop_when_not_running(self, runner):
         """Should handle server stop when not running"""
-        # Remove PID file if it exists
-        pid_file = os.path.expanduser("~/.pkm/pkm-server.pid")
-        if os.path.exists(pid_file):
-            os.remove(pid_file)
-        result = runner.invoke(server, ["stop"], catch_exceptions=False)
-        # Should handle gracefully (not running)
-        assert result.exit_code == 0
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0)
+            result = runner.invoke(server, ["stop"], catch_exceptions=False)
+            # Should handle gracefully (not running)
+            assert result.exit_code == 0
 
 
 class TestCLIInbox:

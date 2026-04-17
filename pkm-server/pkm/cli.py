@@ -1,135 +1,61 @@
 import click
 import requests
-import os
-import time
-import signal
-import sys
-import re
-import shutil
 import subprocess
-from datetime import datetime
-from pathlib import Path
+import os
 
-# Add parent directory to path for config import
-sys.path.insert(0, str(Path(__file__).parent.parent))
-from pkm.config import get_api_base, get_port
-from pkm.workspace import create_task_workspace, create_project_workspace
+from pkm.config import get_api_base
+from pkm.commands.task import (
+    task_add, task_ls, task_get, task_update,
+    task_done, task_approve, task_delete
+)
+from pkm.commands.project import (
+    project_add, project_ls, project_get, project_update,
+    project_delete, project_archive
+)
+from pkm.commands.inbox import inbox_add, extract_urls, generate_inbox_filename, parse_url_with_claude
+from pkm.commands.reflow import reflow_run, reflow_status, reflow_stage2
+from pkm.commands.config import config_default, config_interactive
+from pkm.commands.server_cmd import (
+    server_start as _server_start,
+    server_stop as _server_stop,
+    server_status as _server_status,
+    is_server_running as _is_server_running,
+    _is_container_running
+)
+from pkm.workspace import (
+    get_workspace_base_path, get_task_workspace_base,
+    get_project_workspace_base, get_inbox_base
+)
 
-# When using docker-compose, exposed port is 8890, server listens on 7890 internally
-# CLI uses get_api_base() which respects PKM_API_BASE env var, host_port config, or port config
 API_BASE = get_api_base()
-PID_FILE = os.path.expanduser("~/.pkm/pkm-server.pid")
 
 
-def get_pid():
-    if os.path.exists(PID_FILE):
-        with open(PID_FILE) as f:
-            return f.read().strip()
-    return None
-
-
-def save_pid(pid):
-    os.makedirs(os.path.dirname(PID_FILE), exist_ok=True)
-    with open(PID_FILE, "w") as f:
-        f.write(str(pid))
-
-
-# Inbox helper functions
-def extract_urls(text):
-    """从文本中提取 URL"""
-    url_pattern = r'https?://[^\s<>"{}|\\^`\[\]]+'
-    return re.findall(url_pattern, text)
-
-
-def parse_url_with_claude(url, user_note):
-    """调用 Claude CLI 解析 URL 内容"""
-    prompt = f"""请访问并解析以下链接的内容，提取：标题、正文要点、代码块（如有）。
-以结构化 Markdown 格式输出。
-
-链接：{url}
-用户备注：{user_note}
-
-请提取并总结内容。"""
-
-    try:
-        model = os.environ.get("CLAUDE_MODEL", "MiniMax-M2.7-highspeed")
-        result = subprocess.run(
-            ["claude", "-p", prompt,
-             "--permission-mode", "acceptEdits",
-             "--allowedTools", "WebFetch",
-             "--effort", "medium",
-             "--model", model],
-            capture_output=True,
-            text=True,
-            timeout=120
-        )
-        if result.returncode == 0:
-            return result.stdout
-        else:
-            return None
-    except Exception:
-        return None
-
-
-def generate_inbox_filename(content):
-    """生成 inbox 文件名: YYYYMMDD_HHMMSS_标题_inbox.md"""
-    # 提取前50字符作为标题
-    title = content[:50].replace("\n", " ").replace("#", "").replace("/", "_").strip()
-    if len(content) > 50:
-        title = title[:47] + "..."
-    now = datetime.now()
-    return now.strftime("%Y%m%d_%H%M%S") + "_" + title + "_inbox.md"
-
-
-def is_server_running():
-    try:
-        r = requests.get(f"{API_BASE}/health", timeout=1)
-        return r.status_code == 200
-    except:
-        return False
-
-
+# Wrapper functions that call server_cmd implementations
+# These wrappers exist so that tests can monkeypatch pkm.cli.is_server_running
 def server_start():
-    if is_server_running():
-        click.echo("Server is already running")
-        return
-    import subprocess
-    log_dir = os.path.expanduser("~/.pkm/logs")
-    os.makedirs(log_dir, exist_ok=True)
-    log_file = os.path.join(log_dir, "pkm-server.log")
-    server_port = get_port()
-    with open(log_file, "w") as f:
-        proc = subprocess.Popen(
-            [sys.executable, "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", str(server_port)],
-            cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            stdout=f, stderr=f
-        )
-    save_pid(proc.pid)
-    time.sleep(1)
-    if is_server_running():
-        click.echo(f"Server started (PID: {proc.pid})")
-    else:
-        click.echo("Server failed to start, check logs")
+    _server_start(API_BASE)
 
 
 def server_stop():
-    pid = get_pid()
-    if not pid:
-        click.echo("Server not running")
-        return
-    try:
-        os.kill(int(pid), signal.SIGTERM)
-        click.echo("Server stopped")
-    except ProcessLookupError:
-        click.echo("Server not found")
-    os.remove(PID_FILE)
+    """Stop the PKM server using docker compose"""
+    _server_stop()
 
 
 def server_status():
-    if is_server_running():
+    """Display server status"""
+    if _is_container_running():
         click.echo("Server is running")
+        if is_server_running():
+            click.echo("Service is ready")
+        else:
+            click.echo("Service is not ready")
     else:
         click.echo("Server is not running")
+
+
+def is_server_running():
+    """Check if server is running"""
+    return _is_server_running(API_BASE)
 
 
 @click.group()
@@ -168,6 +94,22 @@ Commands:
     pass
 
 
+# Config command
+@cli.command()
+@click.option("--default", is_flag=True, help="非交互式默认配置")
+def config(default):
+    """引导配置 PKM
+
+    示例:
+      pkm config              # 交互式引导
+      pkm config --default   # 使用默认配置启动
+    """
+    if default:
+        config_default()
+    else:
+        config_interactive()
+
+
 # Inbox commands
 @cli.group()
 def inbox():
@@ -179,49 +121,16 @@ def inbox():
 @click.argument("content")
 @click.option("--parse", is_flag=True, help="Parse URLs in content using AI")
 def add(content, parse):
-    """Capture content to inbox
+    """Capture content to inbox, eg: pkm inbox add "想法"
 
     Examples:
       pkm inbox "Some notes"
       pkm inbox --parse "Check this https://example.com article"
     """
-    if not content or not content.strip():
-        click.echo("Error: 内容不能为空", err=True)
-        return
-
-    # 确定 50_Raw/inbox 路径
-    inbox_dir = os.path.expanduser("~/.pkm/50_Raw/inbox")
-    os.makedirs(inbox_dir, exist_ok=True)
-
-    # 处理 --parse 模式
-    final_content = content
-    if parse:
-        urls = extract_urls(content)
-        if urls:
-            # 只解析第一个 URL
-            url = urls[0]
-            user_note = content.replace(url, "").strip()
-            parsed_content = parse_url_with_claude(url, user_note)
-            if parsed_content:
-                final_content = f"{content}\n\n## AI 解析结果\n\n{parsed_content}"
-            else:
-                click.echo("Warning: URL 解析失败，只保存用户输入", err=True)
-
-    # 生成文件名
-    filename = generate_inbox_filename(final_content)
-    filepath = os.path.join(inbox_dir, filename)
-
-    # 写入文件
-    try:
-        with open(filepath, "w", encoding="utf-8") as f:
-            f.write(final_content)
-    except IOError as e:
-        click.echo(f"Error: 无法写入文件: {e}", err=True)
-        return
-
-    click.echo(f"Captured to inbox: {filename}")
+    inbox_add(content, parse)
 
 
+# Server commands
 @cli.group()
 def server():
     """Server management"""
@@ -249,16 +158,16 @@ def status():
 
     Display server, tasks, projects, knowledge reflow, and workspace info.
     """
-    import subprocess
-    from pkm.workspace import get_workspace_base_path, get_task_workspace_base, get_project_workspace_base, get_inbox_base
-
     click.echo("PKM Status")
     click.echo("==========")
 
     # Server info
-    if is_server_running():
-        pid = get_pid()
-        click.echo(f"Server:      Running (PID: {pid})")
+    if _is_container_running():
+        click.echo(f"Server:      Running")
+        if is_server_running():
+            click.echo("Service:    Ready")
+        else:
+            click.echo("Service:    Not ready")
     else:
         click.echo("Server:      Not running")
     click.echo(f"API:         {API_BASE}")
@@ -294,7 +203,7 @@ def status():
         if data.get("last_updated"):
             click.echo(f"  Last updated: {data['last_updated']}")
 
-    except Exception as e:
+    except requests.RequestException as e:
         click.echo(f"  Unable to fetch: {e}")
 
     # Workspace paths
@@ -324,7 +233,7 @@ def status():
             click.echo(f"  Remote:   {remote_url}")
         else:
             click.echo("  Remote:    Not configured")
-    except:
+    except Exception:
         click.echo("  Remote:    Not available")
 
     # Version info
@@ -352,31 +261,7 @@ def add(title, priority, due, project):
       pkm task add "写周报" --priority high
       pkm task add "读书" --priority high
       pkm task add "会议" --due 2026-04-10"""
-    payload = {"title": title, "priority": priority}
-    if due:
-        payload["due_date"] = due
-
-    # 如果未指定 project，自动关联到 default 项目
-    if not project:
-        r = requests.get(f"{API_BASE}/api/projects")
-        projects = r.json()
-        for p in projects:
-            if p["name"].lower() == "default":
-                payload["project_id"] = p["id"]
-                break
-    else:
-        payload["project_id"] = project
-
-    r = requests.post(f"{API_BASE}/api/tasks", json=payload)
-    r.raise_for_status()
-    task_data = r.json()
-    task_id = task_data["id"]
-
-    # Create workspace and update task with workspace_path
-    workspace_path = create_task_workspace(task_id, title)
-    requests.patch(f"{API_BASE}/api/tasks/{task_id}", json={"workspace_path": workspace_path})
-
-    click.echo(f"Task created: {task_id}")
+    task_add(title, priority, due, project, API_BASE)
 
 
 @task.command()
@@ -390,27 +275,7 @@ def ls(status, project, path):
       pkm task ls
       pkm task ls --status new
       pkm task ls -p"""
-    params = {}
-    if status:
-        params["status"] = status
-    if project:
-        params["project_id"] = project
-    r = requests.get(f"{API_BASE}/api/tasks", params=params)
-    r.raise_for_status()
-    tasks = r.json()
-    if not tasks:
-        click.echo("No tasks found")
-        return
-    priority_map = {"high": "h", "medium": "m", "low": "l"}
-    for idx, t in enumerate(tasks, 1):
-        pri = priority_map.get(t.get("priority", "medium"), "m")
-        if path:
-            ws_path = t.get("workspace_path", "")
-            click.echo(f"[{idx}] {t['title']} ({t['status']}) [{pri}]")
-            if ws_path:
-                click.echo(f"    -> {ws_path}")
-        else:
-            click.echo(f"[{idx}] {t['title']} ({t['status']}) [{pri}]")
+    task_ls(status, project, path, API_BASE)
 
 
 @task.command()
@@ -420,17 +285,7 @@ def get(task_id):
 
     Example:
       pkm task get 3e3705f1"""
-    r = requests.get(f"{API_BASE}/api/tasks/{task_id}")
-    r.raise_for_status()
-    t = r.json()
-    click.echo(f"ID: {t['id']}")
-    click.echo(f"Title: {t['title']}")
-    click.echo(f"Status: {t['status']}")
-    click.echo(f"Priority: {t['priority']}")
-    if t.get("progress"):
-        click.echo(f"Progress: {t['progress']}")
-    if t.get("due_date"):
-        click.echo(f"Due: {t['due_date']}")
+    task_get(task_id, API_BASE)
 
 
 @task.command()
@@ -445,18 +300,7 @@ def update(task_id, title, status, priority, progress):
     Examples:
       pkm task update 3e3705f1 --title "新标题"
       pkm task update 3e3705f1 --status completed --progress 100"""
-    payload = {}
-    if title:
-        payload["title"] = title
-    if status:
-        payload["status"] = status
-    if priority:
-        payload["priority"] = priority
-    if progress:
-        payload["progress"] = progress
-    r = requests.patch(f"{API_BASE}/api/tasks/{task_id}", json=payload)
-    r.raise_for_status()
-    click.echo("Task updated")
+    task_update(task_id, title, status, priority, progress, API_BASE)
 
 
 @task.command()
@@ -466,9 +310,7 @@ def done(task_id):
 
     Example:
       pkm task done 3e3705f1"""
-    r = requests.post(f"{API_BASE}/api/tasks/{task_id}/done")
-    r.raise_for_status()
-    click.echo("Task completed")
+    task_done(task_id, API_BASE)
 
 
 @task.command()
@@ -478,9 +320,7 @@ def approve(task_id):
 
     Example:
       pkm task approve 3e3705f1"""
-    r = requests.post(f"{API_BASE}/api/knowledge/approve/{task_id}")
-    r.raise_for_status()
-    click.echo("Task approved for reflow")
+    task_approve(task_id, API_BASE)
 
 
 @task.command()
@@ -491,36 +331,7 @@ def delete(task_id):
     Examples:
       pkm task delete 3e3705f1
       pkm task delete 1"""
-    # 如果是数字序号，先获取task列表，再获取对应的task_id
-    if task_id.isdigit():
-        idx = int(task_id)
-        r = requests.get(f"{API_BASE}/api/tasks")
-        tasks = r.json()
-        if idx < 1 or idx > len(tasks):
-            click.echo(f"Invalid index: {idx}", err=True)
-            raise SystemExit(1)
-        task = tasks[idx - 1]
-        task_id = task["id"]
-        workspace_path = task.get("workspace_path")
-    else:
-        # UUID 逻辑，先获取 task 信息
-        r = requests.get(f"{API_BASE}/api/tasks/{task_id}")
-        if r.status_code == 404:
-            click.echo(f"Task not found: {task_id}", err=True)
-            raise SystemExit(1)
-        r.raise_for_status()
-        task = r.json()
-        workspace_path = task.get("workspace_path")
-
-    # 删除数据
-    r = requests.delete(f"{API_BASE}/api/tasks/{task_id}")
-    r.raise_for_status()
-
-    # 删除 workspace
-    if workspace_path and os.path.exists(workspace_path):
-        shutil.rmtree(workspace_path)
-
-    click.echo("Task deleted")
+    task_delete(task_id, API_BASE)
 
 
 # Project commands
@@ -539,22 +350,8 @@ def add(name, description):
     Examples:
       pkm project add "我的项目"
       pkm project add "PKM优化" --description "优化任务管理和CLI优化"
-
-    # 完整示例
-      pkm project add "新项目" --description "项目描述"""
-    payload = {"name": name}
-    if description:
-        payload["description"] = description
-    r = requests.post(f"{API_BASE}/api/projects", json=payload)
-    r.raise_for_status()
-    project_data = r.json()
-    project_id = project_data["id"]
-
-    # Create workspace and update project with workspace_path
-    workspace_path = create_project_workspace(project_id, name)
-    requests.patch(f"{API_BASE}/api/projects/{project_id}", json={"workspace_path": workspace_path})
-
-    click.echo(f"Project created: {project_id}")
+    """
+    project_add(name, description, API_BASE)
 
 
 @project.command()
@@ -569,59 +366,8 @@ def ls(status, show_path):
       pkm project ls --status archived
       pkm project ls -p
       pkm project ls --status active -p
-
-    # 查看所有状态的项目
-      pkm project ls --status active
-      pkm project ls --status archived"""
-    params = {}
-    if status:
-        params["status"] = status
-    r = requests.get(f"{API_BASE}/api/projects", params=params)
-    r.raise_for_status()
-    projects = r.json()
-
-    if not projects:
-        # 检查 default 项目工作区是否存在
-        default_path = os.path.join(os.path.expanduser("~/.pkm"), "60_Projects")
-        try:
-            if os.path.isdir(default_path):
-                for item in os.listdir(default_path):
-                    if item.startswith("P_default"):
-                        full_path = os.path.join(default_path, item)
-                        if show_path:
-                            click.echo(f"[default] P_default (active) -> {full_path}")
-                        else:
-                            click.echo(f"[default] P_default (active)")
-                        return
-        except OSError:
-            pass
-        click.echo("No projects found")
-        return
-
-    # 显示项目列表：default 单独一行，其他项目用序号
-    default_project = None
-    normal_projects = []
-    for p in projects:
-        if p["name"].lower() == "default":
-            default_project = p
-        else:
-            normal_projects.append(p)
-
-    # 先显示 default 项目
-    if default_project:
-        ws_path = default_project.get("workspace_path", "")
-        if show_path and ws_path:
-            click.echo(f"[default] {default_project['name']} ({default_project['status']}) -> {ws_path}")
-        else:
-            click.echo(f"[default] {default_project['name']} ({default_project['status']})")
-
-    # 再显示其他项目，用序号
-    for idx, p in enumerate(normal_projects, 1):
-        ws_path = p.get("workspace_path", "")
-        if show_path and ws_path:
-            click.echo(f"[{idx}] {p['name']} ({p['status']}) -> {ws_path}")
-        else:
-            click.echo(f"[{idx}] {p['name']} ({p['status']})")
+    """
+    project_ls(status, show_path, API_BASE)
 
 
 @project.command()
@@ -633,17 +379,8 @@ def get(project_id):
       pkm project get ccec0f66
       pkm project get 1
       pkm project get default
-
-    # 获取项目详情（可用 ID、序号或 default）
-      pkm project get ccec0f66"""
-    r = requests.get(f"{API_BASE}/api/projects/{project_id}")
-    r.raise_for_status()
-    p = r.json()
-    click.echo(f"ID: {p['id']}")
-    click.echo(f"Name: {p['name']}")
-    click.echo(f"Status: {p['status']}")
-    if p.get("description"):
-        click.echo(f"Description: {p['description']}")
+    """
+    project_get(project_id, API_BASE)
 
 
 @project.command()
@@ -656,25 +393,8 @@ def update(project_id, name, description):
     Examples:
       pkm project update ccec0f66 --name "新名称"
       pkm project update ccec0f66 --description "新描述"
-      pkm project update ccec0f66 --name "名称" --description "描述"
-      pkm project update 1 --name "新名称"
-
-    # 修改项目名称
-      pkm project update ccec0f66 --name "优化后的项目名"
-
-    # 修改项目描述
-      pkm project update ccec0f66 --description "项目用于XXX"
-
-    # 同时修改名称和描述
-      pkm project update ccec0f66 --name "新名称" --description "新描述"""
-    payload = {}
-    if name:
-        payload["name"] = name
-    if description:
-        payload["description"] = description
-    r = requests.patch(f"{API_BASE}/api/projects/{project_id}", json=payload)
-    r.raise_for_status()
-    click.echo("Project updated")
+    """
+    project_update(project_id, name, description, API_BASE)
 
 
 @project.command()
@@ -685,63 +405,8 @@ def delete(project_id):
     Examples:
       pkm project delete 2
       pkm project delete default
-
-    # 通过序号删除（删除列表中的第2个项目）
-      pkm project delete 2
-
-    # 注意：不能删除 default 项目"""
-    # 如果是数字序号，需要计算正确的索引（跳过 default 项目）
-    if project_id.isdigit():
-        idx = int(project_id)
-        r = requests.get(f"{API_BASE}/api/projects")
-        projects = r.json()
-        # 计算非 default 项目的序号
-        normal_idx = 0
-        target_project = None
-        for p in projects:
-            if p["name"].lower() != "default":
-                normal_idx += 1
-                if normal_idx == idx:
-                    target_project = p
-                    break
-        if target_project is None:
-            click.echo(f"Invalid index: {idx}", err=True)
-            raise SystemExit(1)
-        project_id = target_project["id"]
-        workspace_path = target_project.get("workspace_path")
-    elif project_id.lower() == "default":
-        # 直接拒绝删除 default 项目
-        click.echo("Cannot delete default project", err=True)
-        raise SystemExit(1)
-    else:
-        # UUID 逻辑，先获取 project 信息
-        r = requests.get(f"{API_BASE}/api/projects/{project_id}")
-        if r.status_code == 404:
-            click.echo(f"Project not found: {project_id}", err=True)
-            raise SystemExit(1)
-        r.raise_for_status()
-        project = r.json()
-
-        # 检查是否为 default 项目
-        if project["name"].lower() == "default":
-            click.echo("Cannot delete default project", err=True)
-            raise SystemExit(1)
-
-        project_id = project["id"]
-        workspace_path = project.get("workspace_path")
-
-    # 调用 API 删除
-    r = requests.delete(f"{API_BASE}/api/projects/{project_id}")
-    if r.status_code == 400:
-        click.echo("Cannot delete default project", err=True)
-        raise SystemExit(1)
-    r.raise_for_status()
-
-    # 删除 workspace
-    if workspace_path and os.path.exists(workspace_path):
-        shutil.rmtree(workspace_path)
-
-    click.echo("Project deleted")
+    """
+    project_delete(project_id, API_BASE)
 
 
 @project.command()
@@ -751,12 +416,8 @@ def archive(project_id):
 
     Examples:
       pkm project archive 1
-
-    # 归档项目（归档后可使用 --status archived 查看）
-      pkm project archive 1"""
-    r = requests.post(f"{API_BASE}/api/projects/{project_id}/archive")
-    r.raise_for_status()
-    click.echo("Project archived")
+    """
+    project_archive(project_id, API_BASE)
 
 
 # Knowledge Reflow commands
@@ -772,11 +433,7 @@ def run():
 
     Example:
       pkm reflow run"""
-    click.echo("Starting knowledge reflow...")
-    r = requests.post(f"{API_BASE}/api/knowledge/reflow")
-    r.raise_for_status()
-    result = r.json()
-    click.echo(f"Reflow completed: {result['message']}")
+    reflow_run(API_BASE)
 
 
 @reflow.command()
@@ -785,24 +442,7 @@ def status():
 
     Example:
       pkm reflow status"""
-    r = requests.get(f"{API_BASE}/api/knowledge/status")
-    r.raise_for_status()
-    result = r.json()
-    click.echo(f"Pending approved tasks: {result['pending_approved_tasks']}")
-    click.echo(f"Pending reflows: {result['pending_reflows']}")
-    click.echo(f"Claude CLI available: {result['claude_available']}")
-    click.echo(f"Config: {result['config']}")
-
-    # Stage2 status
-    try:
-        r2 = requests.get(f"{API_BASE}/api/knowledge/reflow/status/stage2")
-        r2.raise_for_status()
-        stage2_result = r2.json()
-        click.echo(f"\n--- Stage2 ---")
-        click.echo(f"Pending projects: {stage2_result['pending_projects']}")
-    except:
-        click.echo(f"\n--- Stage2 ---")
-        click.echo("Stage2 not available")
+    reflow_status(API_BASE)
 
 
 @reflow.command()
@@ -812,12 +452,9 @@ def stage2(batch_size):
 
     Example:
       pkm reflow stage2
-      pkm reflow stage2 --batch-size 3"""
-    click.echo("Starting Stage2 knowledge distillation...")
-    r = requests.post(f"{API_BASE}/api/knowledge/reflow/stage2")
-    r.raise_for_status()
-    result = r.json()
-    click.echo(f"Stage2 completed: {result['message']}")
+      pkm reflow stage2 --batch-size 3
+    """
+    reflow_stage2(batch_size, API_BASE)
 
 
 if __name__ == "__main__":

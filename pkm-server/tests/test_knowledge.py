@@ -96,7 +96,7 @@ class TestCheckClaudeEnvironment:
     @patch("subprocess.run")
     def test_claude_generic_exception(self, mock_run):
         """Should return False when Claude CLI throws generic exception"""
-        mock_run.side_effect = RuntimeError("unexpected error")
+        mock_run.side_effect = OSError("unexpected error")
         ok, msg = knowledge.check_claude_environment()
         assert ok is False
         assert "调用失败" in msg
@@ -525,7 +525,7 @@ class TestClassifyKnowledge:
     @patch("subprocess.run")
     def test_classify_defaults_to_notes_on_error(self, mock_run):
         """Should return notes as default on error"""
-        mock_run.side_effect = Exception("error")
+        mock_run.side_effect = OSError("error")
         result = knowledge.classify_knowledge("一些笔记内容")
         assert result == "notes"
 

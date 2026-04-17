@@ -3,6 +3,8 @@ import os
 import logging
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional, List
@@ -17,8 +19,7 @@ from logging_config import setup_logging, get_logger
 setup_logging()
 logger = get_logger(__name__)
 
-app = FastAPI(title="PKM Server")
-
+# Global scheduler instance
 scheduler = BackgroundScheduler()
 
 # Status cache
@@ -31,54 +32,9 @@ status_cache = {
 }
 
 
-def update_status_cache():
-    """更新状态缓存"""
-    from knowledge import get_reflow_status
-    global status_cache
-    try:
-        # Update tasks stats
-        tasks = database.list_tasks()
-        status_cache["tasks"]["total"] = len(tasks)
-        by_status = {}
-        for t in tasks:
-            s = t.get("status", "unknown")
-            by_status[s] = by_status.get(s, 0) + 1
-        status_cache["tasks"]["by_status"] = by_status
-
-        # Update projects stats
-        projects = database.list_projects()
-        status_cache["projects"]["total"] = len(projects)
-        by_status = {}
-        for p in projects:
-            s = p.get("status", "unknown")
-            by_status[s] = by_status.get(s, 0) + 1
-        status_cache["projects"]["by_status"] = by_status
-
-        # Update knowledge stats
-        reflow_status = get_reflow_status()
-        status_cache["knowledge"] = {
-            "pending_approved_tasks": reflow_status.get("pending_approved_tasks", 0),
-            "pending_reflows": reflow_status.get("pending_reflows", 0),
-            "claude_available": reflow_status.get("claude_available", False)
-        }
-
-        from datetime import datetime
-        status_cache["last_updated"] = datetime.now().isoformat()
-        logger.debug("Status cache updated")
-    except Exception as e:
-        logger.error(f"Failed to update status cache: {e}")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
-@app.on_event("startup")
-def startup():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """FastAPI lifespan - startup and shutdown handler"""
     logger.info("PKM Server starting...")
 
     database.init_db()
@@ -130,12 +86,61 @@ def startup():
     logger.info("Scheduler started")
     logger.info("PKM Server started on http://0.0.0.0:7890")
 
+    yield  # ====== 服务器运行中 ======
 
-@app.on_event("shutdown")
-def shutdown():
+    # Shutdown
     logger.info("PKM Server shutting down...")
     scheduler.shutdown()
     logger.info("PKM Server stopped")
+
+
+app = FastAPI(title="PKM Server", lifespan=lifespan)
+
+
+def update_status_cache():
+    """更新状态缓存"""
+    from knowledge import get_reflow_status
+    global status_cache
+    try:
+        # Update tasks stats
+        tasks = database.list_tasks()
+        status_cache["tasks"]["total"] = len(tasks)
+        by_status = {}
+        for t in tasks:
+            s = t.get("status", "unknown")
+            by_status[s] = by_status.get(s, 0) + 1
+        status_cache["tasks"]["by_status"] = by_status
+
+        # Update projects stats
+        projects = database.list_projects()
+        status_cache["projects"]["total"] = len(projects)
+        by_status = {}
+        for p in projects:
+            s = p.get("status", "unknown")
+            by_status[s] = by_status.get(s, 0) + 1
+        status_cache["projects"]["by_status"] = by_status
+
+        # Update knowledge stats
+        reflow_status = get_reflow_status()
+        status_cache["knowledge"] = {
+            "pending_approved_tasks": reflow_status.get("pending_approved_tasks", 0),
+            "pending_reflows": reflow_status.get("pending_reflows", 0),
+            "claude_available": reflow_status.get("claude_available", False)
+        }
+
+        from datetime import datetime
+        status_cache["last_updated"] = datetime.now().isoformat()
+        logger.debug("Status cache updated")
+    except Exception as e:
+        logger.error(f"Failed to update status cache: {e}")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/health")

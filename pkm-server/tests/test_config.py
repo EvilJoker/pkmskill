@@ -170,3 +170,98 @@ def test_get_api_base_without_env(monkeypatch, tmp_path):
 
     api_base = pkm.config.get_api_base()
     assert "9000" in api_base
+
+
+# ============================================================
+# Tests for pkm.commands.config (config command)
+# ============================================================
+from click.testing import CliRunner
+from unittest.mock import patch, MagicMock
+
+
+class TestConfigCmdDefault:
+    """Tests for pkm config --default"""
+
+    def test_config_default_no_image(self):
+        """镜像不存在时应该报错"""
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=1, stdout="")
+
+            with patch("click.echo") as mock_echo:
+                from pkm.commands import config as config_module
+                config_module.config_default()
+
+                # Check error message
+                mock_echo.assert_called()
+                call_args = str(mock_echo.call_args_list)
+                assert "not found" in call_args.lower() or "error" in call_args.lower()
+
+    def test_config_default_success(self):
+        """配置成功应该启动服务"""
+        with patch("pkm.commands.config._check_image_exists", return_value=True):
+            with patch("pkm.commands.config._ensure_config_files"):
+                with patch("pkm.commands.config._restart_container"):
+                    with patch("pkm.commands.config._wait_for_service", return_value=True):
+                        from pkm.commands import config as config_module
+                        config_module.config_default()
+
+
+class TestConfigCmdHelperFunctions:
+    """Tests for config command helper functions"""
+
+    def test_get_value_returns_none_when_no_file(self):
+        """无文件时返回 None"""
+        with patch("pathlib.Path.exists", return_value=False):
+            from pkm.commands import config as config_module
+            result = config_module._get_value("API_KEY")
+            assert result is None
+
+    def test_get_value_parses_existing(self):
+        """能解析已有值"""
+        with patch("pathlib.Path.exists", return_value=True):
+            with patch("pathlib.Path.read_text", return_value="API_KEY=sk-test123\nBASE_URL=https://api.anthropic.com\n"):
+                from pkm.commands import config as config_module
+                assert config_module._get_value("API_KEY") == "sk-test123"
+                assert config_module._get_value("BASE_URL") == "https://api.anthropic.com"
+
+    def test_get_value_ignores_comment(self):
+        """注释行被忽略"""
+        with patch("pathlib.Path.exists", return_value=True):
+            with patch("pathlib.Path.read_text", return_value="# API_KEY=sk-comment\nAPI_KEY=sk-actual\n"):
+                from pkm.commands import config as config_module
+                result = config_module._get_value("API_KEY")
+                assert result == "sk-actual"
+
+    def test_get_value_handles_empty_value(self):
+        """空值返回 None"""
+        with patch("pathlib.Path.exists", return_value=True):
+            with patch("pathlib.Path.read_text", return_value="API_KEY=\n"):
+                from pkm.commands import config as config_module
+                result = config_module._get_value("API_KEY")
+                assert result is None
+
+    def test_update_value_adds_new_key(self):
+        """更新不存在的 key 时添加"""
+        with patch("pathlib.Path.exists", return_value=True):
+            with patch("pathlib.Path.read_text", return_value="# comment\n"):
+                with patch("pathlib.Path.write_text") as mock_write:
+                    from pkm.commands import config as config_module
+                    config_module._update_value("MODEL", "anthropic/claude-3.5-sonnet")
+                    mock_write.assert_called()
+
+
+class TestConfigCmdInteractive:
+    """Tests for interactive config command"""
+
+    def test_interactive_with_multi_config(self):
+        """交互式配置多项目"""
+        with patch("pkm.commands.config._check_image_exists", return_value=True):
+            with patch("pkm.commands.config._ensure_config_files"):
+                with patch("pkm.commands.config._get_value", return_value="sk-existing"):
+                    with patch("pkm.commands.config._update_value"):
+                        with patch("pkm.commands.config._restart_container"):
+                            with patch("pkm.commands.config._wait_for_service", return_value=True):
+                                with patch("pkm.commands.config.click") as mock_click:
+                                    mock_click.prompt.return_value = "sk-existing"
+                                    from pkm.commands import config as config_module
+                                    config_module.config_interactive()
