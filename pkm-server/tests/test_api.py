@@ -5,7 +5,7 @@ import requests
 import time
 import os
 
-BASE_URL = os.environ.get("PKM_API_BASE", "http://localhost:8890")
+BASE_URL = os.environ.get("PKM_API_BASE", "http://localhost:7890")
 
 
 @pytest.fixture(scope="module")
@@ -55,18 +55,22 @@ def api_client():
     return APIClient(BASE_URL)
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="module", autouse=True)
 def wait_for_server(api_client):
     """Wait for server to be ready"""
-    max_retries = 30
-    for _ in range(max_retries):
+    # Wait up to 10 minutes for server to be ready
+    # (pytest runs all tests including test_cli.py first which takes ~4 min)
+    max_retries = 600
+    for i in range(max_retries):
         try:
-            r = api_client.health()
+            r = api_client.session.get(f"{api_client.base_url}/api/status")
             if r.status_code == 200:
+                print(f"\nServer ready after {i} seconds")
                 return
         except requests.exceptions.ConnectionError:
-            time.sleep(1)
-    pytest.fail("Server did not start in time")
+            pass
+        time.sleep(1)
+    pytest.fail(f"Server not ready after {max_retries} seconds")
 
 
 @pytest.fixture(autouse=True)
@@ -357,3 +361,135 @@ class TestTaskProjectRelation:
         r = api_client.list_tasks(project=project_id)
         tasks = r.json()
         assert any(t["id"] == task_id for t in tasks)
+
+
+class TestStatusAPI:
+    """Test Status API endpoint"""
+
+    def test_get_status(self, api_client, wait_for_server):
+        """Should return cached status info"""
+        r = api_client.session.get(f"{api_client.base_url}/api/status")
+        assert r.status_code == 200
+        data = r.json()
+        assert "tasks" in data
+        assert "projects" in data
+        assert "knowledge" in data
+        assert "server" in data
+        assert "last_updated" in data
+
+    def test_status_includes_tasks_stats(self, api_client, wait_for_server):
+        """Should include task counts by status"""
+        r = api_client.session.get(f"{api_client.base_url}/api/status")
+        data = r.json()
+        assert "total" in data["tasks"]
+        assert "by_status" in data["tasks"]
+
+    def test_status_includes_projects_stats(self, api_client, wait_for_server):
+        """Should include project counts by status"""
+        r = api_client.session.get(f"{api_client.base_url}/api/status")
+        data = r.json()
+        assert "total" in data["projects"]
+        assert "by_status" in data["projects"]
+
+    def test_status_includes_knowledge_stats(self, api_client, wait_for_server):
+        """Should include knowledge reflow stats"""
+        r = api_client.session.get(f"{api_client.base_url}/api/status")
+        data = r.json()
+        assert "pending_approved_tasks" in data["knowledge"]
+        assert "pending_reflows" in data["knowledge"]
+        assert "claude_available" in data["knowledge"]
+
+
+class TestKnowledgeAPI:
+    """Test Knowledge Reflow API endpoints"""
+
+    def test_get_reflow_status(self, api_client, wait_for_server):
+        """Should return reflow status"""
+        r = api_client.session.get(f"{api_client.base_url}/api/knowledge/status")
+        assert r.status_code == 200
+        data = r.json()
+        assert "pending_approved_tasks" in data
+        assert "pending_reflows" in data
+        assert "claude_available" in data
+
+    def test_trigger_reflow(self, api_client, wait_for_server):
+        """Should trigger reflow cycle"""
+        r = api_client.session.post(f"{api_client.base_url}/api/knowledge/reflow")
+        assert r.status_code == 200
+        data = r.json()
+        assert data["triggered"] is True
+        assert "processed" in data
+        assert "succeeded" in data
+        assert "failed" in data
+
+    def test_update_reflow_config(self, api_client, wait_for_server):
+        """Should update reflow config"""
+        r = api_client.session.patch(
+            f"{api_client.base_url}/api/knowledge/config",
+            params={"interval": 3600}
+        )
+        assert r.status_code == 200
+        data = r.json()
+        assert "config" in data
+        assert data["config"]["interval"] == 3600
+
+    def test_approve_task_reflow(self, api_client, wait_for_server):
+        """Should approve task reflow (change status from done to approved)"""
+        # Create a task and mark it as done
+        task = api_client.create_task(
+            title="测试_approve",
+            priority="medium",
+            project_id="default"
+        )
+        assert task.status_code == 200
+        task_id = task.json()["id"]
+
+        # Complete the task (sets status to done)
+        done = api_client.done_task(task_id)
+        assert done.status_code == 200
+
+        # Approve the task
+        r = api_client.session.post(f"{api_client.base_url}/api/knowledge/approve/{task_id}")
+        assert r.status_code == 200
+        data = r.json()
+        assert data["status"] == "approved"
+
+        # Cleanup
+        api_client.delete_task(task_id)
+
+    def test_approve_task_reflow_wrong_status(self, api_client, wait_for_server):
+        """Should fail to approve task that is not in done status"""
+        # Create a new task (status = new, not done)
+        task = api_client.create_task(
+            title="测试_approve_wrong_status",
+            priority="medium"
+        )
+        assert task.status_code == 200
+        task_id = task.json()["id"]
+
+        # Try to approve - should fail because task status is 'new' not 'done'
+        r = api_client.session.post(f"{api_client.base_url}/api/knowledge/approve/{task_id}")
+        assert r.status_code == 400
+
+        # Cleanup
+        api_client.delete_task(task_id)
+
+    def test_trigger_stage2(self, api_client, wait_for_server):
+        """Should trigger Stage2 cycle"""
+        r = api_client.session.post(f"{api_client.base_url}/api/knowledge/reflow/stage2")
+        assert r.status_code == 200
+        data = r.json()
+        assert data["triggered"] is True
+        assert "processed" in data
+        assert "succeeded" in data
+        assert "failed" in data
+
+    def test_get_stage2_status(self, api_client, wait_for_server):
+        """Should return Stage2 status"""
+        r = api_client.session.get(f"{api_client.base_url}/api/knowledge/reflow/status/stage2")
+        assert r.status_code == 200
+        data = r.json()
+        assert "pending_projects" in data
+        assert "config" in data
+        assert "claude_available" in data
+

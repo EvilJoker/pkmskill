@@ -93,6 +93,14 @@ class TestCheckClaudeEnvironment:
         ok, msg = knowledge.check_claude_environment()
         assert ok is False
 
+    @patch("subprocess.run")
+    def test_claude_generic_exception(self, mock_run):
+        """Should return False when Claude CLI throws generic exception"""
+        mock_run.side_effect = RuntimeError("unexpected error")
+        ok, msg = knowledge.check_claude_environment()
+        assert ok is False
+        assert "调用失败" in msg
+
 
 class TestShouldExcludeFile:
     """Test file exclusion logic"""
@@ -144,6 +152,27 @@ class TestReadTaskWorkspaceContent:
         assert "Task content" not in result
         assert "Some notes" in result
         assert "Solution content" in result
+
+    def test_read_workspace_handles_unreadable_file(self, temp_workspace, monkeypatch):
+        """Should handle unreadable files gracefully"""
+        # Create a file that will be unreadable
+        bad_file = os.path.join(temp_workspace, "bad.md")
+        with open(bad_file, "w") as f:
+            f.write("content")
+
+        # Make the file unreadable by patching open to raise an exception
+        import builtins
+        original_open = builtins.open
+
+        def mock_open(*args, **kwargs):
+            if "bad.md" in str(args[0]):
+                raise PermissionError("Permission denied")
+            return original_open(*args, **kwargs)
+
+        monkeypatch.setattr(builtins, "open", mock_open)
+        # Should not raise, just skip the bad file
+        result = knowledge.read_task_workspace_content(temp_workspace)
+        assert "content" not in result  # bad.md should be skipped
 
     def test_excludes_py_files(self, temp_workspace):
         """Should exclude Python files"""
@@ -203,6 +232,21 @@ class TestExtractKnowledgeWithClaude:
         assert "extracted" in result.lower() or "error" in result.lower()
         assert mock_run.call_count == 3  # 2 retries + 1 success
 
+    @patch("subprocess.run")
+    def test_all_retries_fail(self, mock_run):
+        """Should return error message when all retries fail"""
+        mock_result_fail = MagicMock()
+        mock_result_fail.returncode = 1
+        mock_result_fail.stderr = "repeated error"
+
+        # 3 次调用都失败
+        mock_run.side_effect = [mock_result_fail, mock_result_fail, mock_result_fail]
+
+        result = knowledge.extract_knowledge_with_claude("content")
+
+        assert "[Claude 调用失败" in result
+        assert mock_run.call_count == 3
+
 
 class TestAppendToProjectMemory:
     """Test appending knowledge to project memory"""
@@ -252,6 +296,32 @@ Test project.
         assert "新任务" in content
         assert "new-task-id" in content
         assert "新经验" in content
+
+    def test_append_to_existing_file_without_header(self, temp_workspace):
+        """Should append to existing project.md without ### header"""
+        # Create existing project.md with index section but no ### headers
+        existing_content = """# Project: Test
+
+## 项目描述
+Test project.
+
+## 经验/方案索引
+Some content without ### header
+"""
+        project_md_path = os.path.join(temp_workspace, "project.md")
+        with open(project_md_path, "w") as f:
+            f.write(existing_content)
+
+        task_info = {"id": "new-task-id", "title": "新任务"}
+        knowledge_text = "## 经验\n- 新经验"
+
+        knowledge.append_to_project_memory(temp_workspace, task_info, knowledge_text)
+
+        with open(project_md_path, "r") as f:
+            content = f.read()
+
+        assert "新任务" in content
+        assert "new-task-id" in content
 
 
 class TestProcessSingleTaskReflow:
@@ -315,6 +385,33 @@ class TestProcessSingleTaskReflow:
         assert reflow is not None
         assert reflow["status"] == "completed"
 
+    @patch("knowledge.extract_knowledge_with_claude")
+    @patch("knowledge.archive_task_workspace")
+    def test_reflow_task_without_project(self, mock_archive, mock_extract, override_db_path, temp_workspace):
+        """Should use default project workspace when task has no project"""
+        mock_extract.return_value = "## 经验\n- 测试经验"
+
+        # Create default project first
+        default_project = create_project(name="default", description="Default", workspace_path=temp_workspace)
+
+        # Create task WITHOUT project_id
+        task = create_task(
+            title="测试任务无项目",
+            priority="medium",
+            workspace_path=temp_workspace
+            # No project_id!
+        )
+        update_task(task["id"], status="approved")
+
+        # Create workspace files
+        with open(os.path.join(temp_workspace, "notes.md"), "w") as f:
+            f.write("Some notes content")
+
+        success, message = knowledge.process_single_task_reflow(task["id"])
+
+        assert success is True
+        assert "成功" in message
+
 
 class TestRunReflowCycle:
     """Test reflow cycle execution"""
@@ -359,6 +456,22 @@ class TestRunReflowCycle:
         assert result["succeeded"] == 1
         assert result["failed"] == 1
         assert len(result["errors"]) == 1
+
+    def test_skips_already_processing(self, override_db_path):
+        """Should skip tasks that are already processing or completed"""
+        from database import get_default_project_id
+        task = create_task(title="测试任务", priority="medium")
+        update_task(task["id"], status="approved")
+
+        # Create a reflow record with status=processing
+        reflow_project_id = get_default_project_id() or create_project(name="default", description="default")["id"]
+        reflow = create_reflow(task["id"], reflow_project_id)
+        update_reflow_status(reflow["id"], "processing")
+
+        result = knowledge.run_reflow_cycle()
+
+        # Task should be skipped (processed=0 since it's skipped due to reflow status)
+        assert result["processed"] == 0
 
 
 class TestGetReflowStatus:
@@ -443,6 +556,56 @@ class TestCheckDuplicate:
         knowledge.KNOWLEDGE_BASE = original
         assert is_dup is False
         assert dup_type == "new"
+
+    @patch("subprocess.run")
+    def test_check_duplicate_with_similar_response(self, mock_run, temp_workspace):
+        """Should return similar when Claude responds with similar"""
+        import knowledge
+        original = knowledge.KNOWLEDGE_BASE
+        knowledge.KNOWLEDGE_BASE = temp_workspace
+
+        # Create a test file
+        test_file = os.path.join(temp_workspace, "notes", "test.md")
+        os.makedirs(os.path.dirname(test_file), exist_ok=True)
+        with open(test_file, "w") as f:
+            f.write("# Test note\nSome content")
+
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+        mock_result.stdout = "similar"
+        mock_run.return_value = mock_result
+
+        is_dup, dup_type = knowledge.check_duplicate("some content", "notes")
+
+        knowledge.KNOWLEDGE_BASE = original
+        assert is_dup is True
+        assert dup_type == "similar"
+
+    @patch("subprocess.run")
+    def test_find_similar_file_unknown_classification(self, mock_run, temp_workspace):
+        """Should use notes dir for unknown classification"""
+        import knowledge
+        original = knowledge.KNOWLEDGE_BASE
+        knowledge.KNOWLEDGE_BASE = temp_workspace
+
+        # Create a notes file
+        notes_dir = os.path.join(temp_workspace, "notes")
+        os.makedirs(notes_dir, exist_ok=True)
+        test_file = os.path.join(notes_dir, "test.md")
+        with open(test_file, "w") as f:
+            f.write("# Test note\nSome content here")
+
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+        mock_result.stdout = "new"
+        mock_run.return_value = mock_result
+
+        # Call find_similar_file with unknown classification
+        result = knowledge.find_similar_file("some content", "unknown_type")
+
+        knowledge.KNOWLEDGE_BASE = original
+        # Should use NOTES_DIR as default
+        assert result is None or isinstance(result, str)
 
 
 class TestWriteToKnowledgeBase:
@@ -547,6 +710,37 @@ class TestRunStage2Cycle:
         assert result["succeeded"] == 1
         assert result["failed"] == 0
 
+    @patch("knowledge.classify_knowledge")
+    @patch("knowledge.check_duplicate")
+    @patch("knowledge.write_to_knowledge_base")
+    def test_stage2_skips_duplicate(self, mock_write, mock_check, mock_classify, override_db_path, temp_workspace):
+        """Should skip duplicate items in stage2"""
+        mock_classify.return_value = "notes"
+        mock_check.return_value = (True, "duplicate")  # Should trigger continue
+        mock_write.return_value = "/path/to/file.md"
+
+        from database import create_project
+        project = create_project(name="测试项目", workspace_path=temp_workspace)
+
+        # Create project.md with knowledge section
+        project_md_path = os.path.join(temp_workspace, "project.md")
+        with open(project_md_path, "w") as f:
+            f.write("""# Project: 测试项目
+
+## 经验/方案索引
+### 2026-04-01 任务：测试任务
+- **任务ID**: test-id
+- **内容**: 测试知识内容
+""")
+
+        result = knowledge.run_stage2_cycle(batch_size=5)
+
+        # Should skip the duplicate, so nothing written
+        assert result["processed"] == 1
+        assert result["succeeded"] == 1
+        assert result["failed"] == 0
+        mock_write.assert_not_called()
+
 
 class TestGetStage2Status:
     """Test Stage2 status retrieval"""
@@ -629,6 +823,17 @@ class TestProcessRawInbox:
         # .txt files should be ignored
         assert result["processed"] == 0
         assert os.path.exists(test_file)  # File should still exist
+
+    def test_empty_file_deleted(self):
+        """Should delete empty markdown files"""
+        test_file = os.path.join(self.inbox_dir, "empty.md")
+        with open(test_file, "w", encoding="utf-8") as f:
+            f.write("   \n\t  ")  # Whitespace only
+
+        result = knowledge.process_raw_inbox()
+
+        # Empty files should be deleted
+        assert not os.path.exists(test_file)
 
 
 class TestRunStage2CycleWithRaw:

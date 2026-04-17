@@ -6,10 +6,13 @@ services:
     image: pkm:local
     container_name: pkm-server-dev
     ports:
-      - "8891:7890"
+      - "7890:7890"
     volumes:
       - .:/app
-      - ~/.pkm_dev:/root/.pkm
-      - ~/.pkm_dev/logs:/root/.pkm/logs
     working_dir: /app
     restart: unless-stopped
+    environment:
+      - CLAUDECODE=1
+      - ANTHROPIC_BASE_URL=${ANTHROPIC_BASE_URL}
+      - ANTHROPIC_AUTH_TOKEN=${ANTHROPIC_AUTH_TOKEN}
+      - PKM_API_BASE=http://localhost:7890

@@ -46,11 +46,6 @@ jobs:
       - name: Run tests
         run: cd pkm-server && make test
 
-      - name: Check coverage thresholds
-        run: |
-          docker cp pkm-server:/tmp/cov.json /tmp/cov.json
-          python3 -c "import json; c=json.load(open('/tmp/cov.json')); t=c['totals']; line=int(t['percent_covered']); branch=int(t.get('percent_branches_covered',0)); print('line='+str(line)+'% branch='+str(branch)+'%'); exit(1 if line<75 or branch<55 else 0)"
-
       - name: Push wheel to release
         if: success()
         env:

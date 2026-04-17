@@ -8,6 +8,9 @@ from pkm.workspace import (
     get_default_project_workspace,
     archive_task_workspace,
     create_default_project_workspace,
+    generate_task_workspace_name,
+    get_raw_base,
+    get_inbox_base,
 )
 
 def test_get_workspace_base_path():
@@ -101,6 +104,32 @@ def test_archive_task_workspace_already_exists():
         assert result is not None
         assert "T_task1_" in result
 
+
+def test_archive_task_workspace_target_not_exists(monkeypatch):
+    """测试归档时目标不存在的分支（不添加时间戳）"""
+    import tempfile
+    import os
+    from pkm.workspace import archive_task_workspace, get_archive_base
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # 创建源工作区
+        source = os.path.join(tmpdir, "T_task2")
+        os.makedirs(source)
+        with open(os.path.join(source, "task.md"), "w") as f:
+            f.write("# Task")
+
+        # 临时修改归档目录
+        archive_dir = os.path.join(tmpdir, "archive")
+        os.makedirs(archive_dir, exist_ok=True)
+        monkeypatch.setattr("pkm.workspace.get_archive_base", lambda: archive_dir)
+
+        # 归档（目标不存在，不应添加时间戳）
+        result = archive_task_workspace(source)
+        assert result is not None
+        assert not result.endswith("_") or "T_task2_" not in result
+        # 目标路径应该直接是 archive_dir/T_task2
+        assert result == os.path.join(archive_dir, "T_task2")
+
 def test_create_default_project_workspace_with_existing():
     """测试当默认项目已存在时的分支"""
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -119,3 +148,31 @@ def test_create_default_project_workspace_with_existing():
         finally:
             if "PKM_WORKSPACE_BASE" in os.environ:
                 del os.environ["PKM_WORKSPACE_BASE"]
+
+
+def test_generate_task_workspace_name_with_name():
+    """测试生成任务工作区名称（带名称）"""
+    name = generate_task_workspace_name("测试任务名称较长的情况")
+    assert "TASK_T" in name
+    assert "测试任务名称较长" in name
+
+
+def test_generate_task_workspace_name_without_name():
+    """测试生成任务工作区名称（不带名称）"""
+    name = generate_task_workspace_name("")
+    assert "TASK_T" in name
+    assert "task" in name
+
+
+def test_get_raw_base():
+    """测试获取 50_Raw 目录"""
+    base = get_raw_base()
+    assert "50_Raw" in base
+    assert os.path.exists(base)
+
+
+def test_get_inbox_base():
+    """测试获取 inbox 目录"""
+    base = get_inbox_base()
+    assert "inbox" in base.lower() or "Inbox" in base
+    assert os.path.exists(base)

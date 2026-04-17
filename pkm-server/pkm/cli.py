@@ -136,17 +136,27 @@ def server_status():
 def cli():
     """PKM CLI - Task and Project Management
 
-工作流示例：
-  inbox     收集灵感 -> pkm inbox add "想法"
-  task      创建任务 -> pkm task add "任务名" --priority high --project <项目ID>
-  task ls   查看列表 -> pkm task ls / pkm task ls -p (显示路径)
-  task get  查看详情 -> pkm task get <id>
-  task update 更新   -> pkm task update <id> --title "新标题" --priority medium
-  task approve 批准  -> pkm task approve <id> (done -> approved，回流知识)
-  project   关联项目 -> pkm project add "项目名" / pkm project get <id>
-  工作中    在工作区 ~/.pkm/10_Tasks/TASK_xxx/ 下编辑文件
-  task done 完成     -> pkm task done <id>
-  reflow    知识提炼 -> 自动每3小时执行，也可手动 pkm reflow run / stage2
+工作流示例:
+
+  inbox 收集灵感 -> pkm inbox add "想法"
+
+  task 创建任务 -> pkm task add "任务名" --priority high --project <项目ID>
+
+  task ls 查看列表 -> pkm task ls / pkm task ls -p (显示路径)
+
+  task get 查看详情 -> pkm task get <id>
+
+  task update 更新 -> pkm task update <id> --title "新标题" --priority medium
+
+  task approve 批准 -> pkm task approve <id> (done -> approved，回流知识)
+
+  project 关联项目 -> pkm project add "项目名" / pkm project get <id>
+
+  工作中 编辑文件 -> 在工作区 ~/.pkm/10_Tasks/TASK_xxx/ 下编辑文件
+
+  task done 完成 -> pkm task done <id>
+
+  reflow 知识提炼 -> 自动每3小时执行，也可手动 pkm reflow run / stage2
 
 Commands:
   inbox    Inbox commands for capturing notes
@@ -233,6 +243,96 @@ def status():
     server_status()
 
 
+@cli.command()
+def status():
+    """Show PKM status
+
+    Display server, tasks, projects, knowledge reflow, and workspace info.
+    """
+    import subprocess
+    from pkm.workspace import get_workspace_base_path, get_task_workspace_base, get_project_workspace_base, get_inbox_base
+
+    click.echo("PKM Status")
+    click.echo("==========")
+
+    # Server info
+    if is_server_running():
+        pid = get_pid()
+        click.echo(f"Server:      Running (PID: {pid})")
+    else:
+        click.echo("Server:      Not running")
+    click.echo(f"API:         {API_BASE}")
+
+    # Get all status from single API call
+    try:
+        r = requests.get(f"{API_BASE}/api/status", timeout=5)
+        r.raise_for_status()
+        data = r.json()
+
+        # Tasks count
+        tasks = data.get("tasks", {})
+        total = tasks.get("total", 0)
+        by_status = tasks.get("by_status", {})
+        status_str = ", ".join(f"{v} {k}" for k, v in sorted(by_status.items()))
+        click.echo(f"Tasks:       {total} total, {status_str}")
+
+        # Projects count
+        projects = data.get("projects", {})
+        total = projects.get("total", 0)
+        by_status = projects.get("by_status", {})
+        status_str = ", ".join(f"{v} {k}" for k, v in sorted(by_status.items()))
+        click.echo(f"Projects:    {total} total, {status_str}")
+
+        # Knowledge info
+        click.echo("\nKnowledge:")
+        knowledge = data.get("knowledge", {})
+        click.echo(f"  Pending approved: {knowledge.get('pending_approved_tasks', 0)}")
+        click.echo(f"  Pending reflows: {knowledge.get('pending_reflows', 0)}")
+        claude = "Available" if knowledge.get("claude_available") else "Not available"
+        click.echo(f"  Claude CLI: {claude}")
+
+        if data.get("last_updated"):
+            click.echo(f"  Last updated: {data['last_updated']}")
+
+    except Exception as e:
+        click.echo(f"  Unable to fetch: {e}")
+
+    # Workspace paths
+    click.echo("\nWorkspace:")
+    click.echo(f"  Base:     {get_workspace_base_path()}")
+    click.echo(f"  Tasks:    {get_task_workspace_base()}")
+    click.echo(f"  Projects: {get_project_workspace_base()}")
+    click.echo(f"  Inbox:    {get_inbox_base()}")
+
+    # Logs
+    click.echo("\nLogs:")
+    log_dir = os.path.expanduser("~/.pkm/logs")
+    click.echo(f"  Path:     {log_dir}")
+
+    # GitHub remote
+    click.echo("\nGitHub:")
+    try:
+        result = subprocess.run(
+            ["git", "remote", "get-url", "origin"],
+            capture_output=True, text=True, timeout=5
+        )
+        if result.returncode == 0:
+            remote_url = result.stdout.strip()
+            remote_url = remote_url.replace(".git", "")
+            if "github.com" in remote_url:
+                remote_url = remote_url.replace("git@github.com:", "https://github.com/")
+            click.echo(f"  Remote:   {remote_url}")
+        else:
+            click.echo("  Remote:    Not configured")
+    except:
+        click.echo("  Remote:    Not available")
+
+    # Version info
+    click.echo("\nVersion:")
+    click.echo("  Client:   snapshot")
+    click.echo("  Server:   snapshot")
+
+
 # Task commands
 @cli.group()
 def task():
@@ -246,7 +346,7 @@ def task():
 @click.option("--due")
 @click.option("--project")
 def add(title, priority, due, project):
-    """Add a new task
+    """Add a new task, eg: pkm task add "写周报" --priority high
 
     Examples:
       pkm task add "写周报" --priority high
@@ -284,7 +384,7 @@ def add(title, priority, due, project):
 @click.option("--project")
 @click.option("-p", "--path", is_flag=True, help="显示工作空间路径")
 def ls(status, project, path):
-    """List tasks
+    """List tasks, eg: pkm task ls
 
     Examples:
       pkm task ls
@@ -316,7 +416,7 @@ def ls(status, project, path):
 @task.command()
 @click.argument("task_id")
 def get(task_id):
-    """Get task details
+    """Get task details, eg: pkm task get 3e3705f1
 
     Example:
       pkm task get 3e3705f1"""
@@ -340,7 +440,7 @@ def get(task_id):
 @click.option("--priority")
 @click.option("--progress")
 def update(task_id, title, status, priority, progress):
-    """Update a task
+    """Update a task, eg: pkm task update 3e3705f1 --title "新标题"
 
     Examples:
       pkm task update 3e3705f1 --title "新标题"
@@ -362,7 +462,7 @@ def update(task_id, title, status, priority, progress):
 @task.command()
 @click.argument("task_id")
 def done(task_id):
-    """Mark task as completed
+    """Mark task as completed, eg: pkm task done 3e3705f1
 
     Example:
       pkm task done 3e3705f1"""
@@ -374,7 +474,7 @@ def done(task_id):
 @task.command()
 @click.argument("task_id")
 def approve(task_id):
-    """Approve task for knowledge reflow (done -> approved)
+    """Approve task for knowledge reflow (done -> approved), eg: pkm task approve 3e3705f1
 
     Example:
       pkm task approve 3e3705f1"""
@@ -386,7 +486,7 @@ def approve(task_id):
 @task.command()
 @click.argument("task_id")
 def delete(task_id):
-    """Delete a task by ID or index
+    """Delete a task by ID or index, eg: pkm task delete 3e3705f1
 
     Examples:
       pkm task delete 3e3705f1
@@ -434,7 +534,7 @@ def project():
 @click.argument("name")
 @click.option("--description")
 def add(name, description):
-    """Add a new project
+    """Add a new project, eg: pkm project add "项目名"
 
     Examples:
       pkm project add "我的项目"
@@ -461,7 +561,7 @@ def add(name, description):
 @click.option("--status")
 @click.option("-p", "--path", "show_path", is_flag=True, help="Show full workspace path")
 def ls(status, show_path):
-    """List projects
+    """List projects, eg: pkm project ls
 
     Examples:
       pkm project ls
@@ -527,7 +627,7 @@ def ls(status, show_path):
 @project.command()
 @click.argument("project_id")
 def get(project_id):
-    """Get project details
+    """Get project details, eg: pkm project get ccec0f66
 
     Examples:
       pkm project get ccec0f66
@@ -551,7 +651,7 @@ def get(project_id):
 @click.option("--name")
 @click.option("--description")
 def update(project_id, name, description):
-    """Update a project
+    """Update a project, eg: pkm project update ccec0f66 --name "新名称"
 
     Examples:
       pkm project update ccec0f66 --name "新名称"
@@ -580,15 +680,11 @@ def update(project_id, name, description):
 @project.command()
 @click.argument("project_id")
 def delete(project_id):
-    """Delete a project by ID, index, or 'default'
+    """Delete a project by ID, index, or 'default', eg: pkm project delete 2
 
     Examples:
-      pkm project delete ccec0f66
       pkm project delete 2
       pkm project delete default
-
-    # 通过 ID 删除
-      pkm project delete ccec0f66
 
     # 通过序号删除（删除列表中的第2个项目）
       pkm project delete 2
@@ -651,14 +747,13 @@ def delete(project_id):
 @project.command()
 @click.argument("project_id")
 def archive(project_id):
-    """Archive a project
+    """Archive a project, eg: pkm project archive 1
 
     Examples:
-      pkm project archive ccec0f66
       pkm project archive 1
 
     # 归档项目（归档后可使用 --status archived 查看）
-      pkm project archive ccec0f66"""
+      pkm project archive 1"""
     r = requests.post(f"{API_BASE}/api/projects/{project_id}/archive")
     r.raise_for_status()
     click.echo("Project archived")

@@ -6,7 +6,7 @@ from unittest.mock import patch, MagicMock
 from click.testing import CliRunner
 
 # 设置 API_BASE 环境变量
-os.environ["PKM_API_BASE"] = os.environ.get("PKM_API_BASE", "http://localhost:8890")
+os.environ["PKM_API_BASE"] = os.environ.get("PKM_API_BASE", "http://localhost:7890")
 
 
 @pytest.fixture(scope="module")

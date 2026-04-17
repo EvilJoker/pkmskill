@@ -21,6 +21,53 @@ app = FastAPI(title="PKM Server")
 
 scheduler = BackgroundScheduler()
 
+# Status cache
+status_cache = {
+    "tasks": {"total": 0, "by_status": {}},
+    "projects": {"total": 0, "by_status": {}},
+    "knowledge": {"pending_approved_tasks": 0, "pending_reflows": 0, "claude_available": False},
+    "server": {"status": "unknown"},
+    "last_updated": None
+}
+
+
+def update_status_cache():
+    """更新状态缓存"""
+    from knowledge import get_reflow_status
+    global status_cache
+    try:
+        # Update tasks stats
+        tasks = database.list_tasks()
+        status_cache["tasks"]["total"] = len(tasks)
+        by_status = {}
+        for t in tasks:
+            s = t.get("status", "unknown")
+            by_status[s] = by_status.get(s, 0) + 1
+        status_cache["tasks"]["by_status"] = by_status
+
+        # Update projects stats
+        projects = database.list_projects()
+        status_cache["projects"]["total"] = len(projects)
+        by_status = {}
+        for p in projects:
+            s = p.get("status", "unknown")
+            by_status[s] = by_status.get(s, 0) + 1
+        status_cache["projects"]["by_status"] = by_status
+
+        # Update knowledge stats
+        reflow_status = get_reflow_status()
+        status_cache["knowledge"] = {
+            "pending_approved_tasks": reflow_status.get("pending_approved_tasks", 0),
+            "pending_reflows": reflow_status.get("pending_reflows", 0),
+            "claude_available": reflow_status.get("claude_available", False)
+        }
+
+        from datetime import datetime
+        status_cache["last_updated"] = datetime.now().isoformat()
+        logger.debug("Status cache updated")
+    except Exception as e:
+        logger.error(f"Failed to update status cache: {e}")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -71,6 +118,14 @@ def startup():
     scheduler.add_job(run_stage2_cycle, 'cron', minute=30)
     logger.info("Stage2 cron job registered (minute=30, interval=3h)")
 
+    # Status cache: 每 60 秒更新
+    scheduler.add_job(update_status_cache, 'interval', seconds=60)
+    logger.info("Status cache job registered (interval=60s)")
+
+    # 立即更新一次缓存
+    update_status_cache()
+    status_cache["server"]["status"] = "running"
+
     scheduler.start()
     logger.info("Scheduler started")
     logger.info("PKM Server started on http://0.0.0.0:7890")
@@ -86,6 +141,12 @@ def shutdown():
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/api/status")
+def get_status():
+    """获取缓存的状态信息"""
+    return status_cache
 
 
 # Projects
