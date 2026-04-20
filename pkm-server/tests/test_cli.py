@@ -10,14 +10,20 @@ API_BASE = os.environ.get("PKM_API_BASE", "http://localhost:8890")
 
 
 def run_cli(args, env=None):
-    """Run PKM CLI command and return result"""
-    env = env or {}
-    env["PKM_API_BASE"] = API_BASE
+    """Run PKM CLI command directly via python module"""
+    import subprocess
+    import os
+
+    cmd = ["python", "-m", "pkm"] + args.split()
+    full_env = {**os.environ, "PKM_API_BASE": "http://localhost:7890"}
+    if env:
+        full_env.update(env)
     result = subprocess.run(
-        f"{PKM_CLI} {args}".split(),
+        cmd,
         capture_output=True,
         text=True,
-        env={**os.environ, **env}
+        env=full_env,
+        cwd="/app"
     )
     return result
 
