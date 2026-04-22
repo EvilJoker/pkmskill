@@ -1,7 +1,9 @@
+import os
+os.environ["COLUMNS"] = "200"
+
 import click
 import requests
 import subprocess
-import os
 
 from pkm.config import get_api_base
 from pkm.commands.task import (
@@ -58,7 +60,7 @@ def is_server_running():
     return _is_server_running(API_BASE)
 
 
-@click.group()
+@click.group(context_settings=dict(max_content_width=200))
 def cli():
     """PKM CLI - Task and Project Management
 
@@ -121,11 +123,12 @@ def inbox():
 @click.argument("content")
 @click.option("--parse", is_flag=True, help="Parse URLs in content using AI")
 def add(content, parse):
-    """Capture content to inbox, eg: pkm inbox add "想法"
+    """Capture content to inbox
 
     Examples:
-      pkm inbox "Some notes"
-      pkm inbox --parse "Check this https://example.com article"
+      pkm inbox add "想法"
+      pkm inbox add "Some notes"
+      pkm inbox add --parse "Check this https://example.com article"
     """
     inbox_add(content, parse)
 
@@ -250,87 +253,67 @@ def task():
 
 
 @task.command()
-@click.argument("title")
+@click.argument("title", required=False)
 @click.option("--priority", type=click.Choice(["high", "medium", "low"]), default="medium")
 @click.option("--due")
 @click.option("--project")
 def add(title, priority, due, project):
-    """Add a new task, eg: pkm task add "写周报" --priority high
-
-    Examples:
-      pkm task add "写周报" --priority high
-      pkm task add "读书" --priority high
-      pkm task add "会议" --due 2026-04-10"""
-    task_add(title, priority, due, project, API_BASE)
+    """Add a new task  eg: pkm task add "写周报" --priority high --due 2026-04-20 --project 1"""
+    if not title:
+        from pkm.commands.task import task_add_interactive
+        task_add_interactive(API_BASE)
+    else:
+        task_add(title, priority, due, project, API_BASE)
 
 
 @task.command()
 @click.option("--status")
 @click.option("--project")
-@click.option("-p", "--path", is_flag=True, help="显示工作空间路径")
-def ls(status, project, path):
-    """List tasks, eg: pkm task ls
-
-    Examples:
-      pkm task ls
-      pkm task ls --status new
-      pkm task ls -p"""
-    task_ls(status, project, path, API_BASE)
+@click.option("-a", "--all", "show_all", is_flag=True, help="显示完整信息")
+def ls(status, project, show_all):
+    """List tasks  eg: pkm task ls --status new --project 1 -a"""
+    task_ls(status, project, show_all, API_BASE)
 
 
 @task.command()
 @click.argument("task_id")
 def get(task_id):
-    """Get task details, eg: pkm task get 3e3705f1
-
-    Example:
-      pkm task get 3e3705f1"""
+    """Get task details  eg: pkm task get 1"""
     task_get(task_id, API_BASE)
 
 
 @task.command()
-@click.argument("task_id")
+@click.argument("task_id", required=False)
 @click.option("--title")
-@click.option("--status")
 @click.option("--priority")
 @click.option("--progress")
-def update(task_id, title, status, priority, progress):
-    """Update a task, eg: pkm task update 3e3705f1 --title "新标题"
-
-    Examples:
-      pkm task update 3e3705f1 --title "新标题"
-      pkm task update 3e3705f1 --status completed --progress 100"""
-    task_update(task_id, title, status, priority, progress, API_BASE)
+def update(task_id, title, priority, progress):
+    """Update a task  eg: pkm task update 1 --title "新标题" --priority high --progress 100"""
+    if not task_id:
+        from pkm.commands.task import task_update_interactive
+        task_update_interactive(API_BASE)
+    else:
+        task_update(task_id, title, None, priority, progress, API_BASE)
 
 
 @task.command()
 @click.argument("task_id")
 def done(task_id):
-    """Mark task as completed, eg: pkm task done 3e3705f1
-
-    Example:
-      pkm task done 3e3705f1"""
+    """Mark task as completed  eg: pkm task done 1"""
     task_done(task_id, API_BASE)
 
 
 @task.command()
 @click.argument("task_id")
 def approve(task_id):
-    """Approve task for knowledge reflow (done -> approved), eg: pkm task approve 3e3705f1
-
-    Example:
-      pkm task approve 3e3705f1"""
+    """Approve task for knowledge reflow (done -> approved)  eg: pkm task approve 1"""
     task_approve(task_id, API_BASE)
 
 
 @task.command()
 @click.argument("task_id")
 def delete(task_id):
-    """Delete a task by ID or index, eg: pkm task delete 3e3705f1
-
-    Examples:
-      pkm task delete 3e3705f1
-      pkm task delete 1"""
+    """Delete a task by ID or index  eg: pkm task delete 1"""
     task_delete(task_id, API_BASE)
 
 
@@ -345,41 +328,22 @@ def project():
 @click.argument("name")
 @click.option("--description")
 def add(name, description):
-    """Add a new project, eg: pkm project add "项目名"
-
-    Examples:
-      pkm project add "我的项目"
-      pkm project add "PKM优化" --description "优化任务管理和CLI优化"
-    """
+    """Add a new project  eg: pkm project add "项目名" --description "描述" """
     project_add(name, description, API_BASE)
 
 
 @project.command()
 @click.option("--status")
-@click.option("-p", "--path", "show_path", is_flag=True, help="Show full workspace path")
-def ls(status, show_path):
-    """List projects, eg: pkm project ls
-
-    Examples:
-      pkm project ls
-      pkm project ls --status active
-      pkm project ls --status archived
-      pkm project ls -p
-      pkm project ls --status active -p
-    """
-    project_ls(status, show_path, API_BASE)
+@click.option("-a", "--all", "show_all", is_flag=True, help="显示完整信息")
+def ls(status, show_all):
+    """List projects  eg: pkm project ls --status active"""
+    project_ls(status, show_all, API_BASE)
 
 
 @project.command()
 @click.argument("project_id")
 def get(project_id):
-    """Get project details, eg: pkm project get ccec0f66
-
-    Examples:
-      pkm project get ccec0f66
-      pkm project get 1
-      pkm project get default
-    """
+    """Get project details  eg: pkm project get 1"""
     project_get(project_id, API_BASE)
 
 
@@ -388,35 +352,21 @@ def get(project_id):
 @click.option("--name")
 @click.option("--description")
 def update(project_id, name, description):
-    """Update a project, eg: pkm project update ccec0f66 --name "新名称"
-
-    Examples:
-      pkm project update ccec0f66 --name "新名称"
-      pkm project update ccec0f66 --description "新描述"
-    """
+    """Update a project  eg: pkm project update 1 --name "新名称" --description "新描述" """
     project_update(project_id, name, description, API_BASE)
 
 
 @project.command()
 @click.argument("project_id")
 def delete(project_id):
-    """Delete a project by ID, index, or 'default', eg: pkm project delete 2
-
-    Examples:
-      pkm project delete 2
-      pkm project delete default
-    """
+    """Delete a project by ID, index, or 'default'  eg: pkm project delete 1"""
     project_delete(project_id, API_BASE)
 
 
 @project.command()
 @click.argument("project_id")
 def archive(project_id):
-    """Archive a project, eg: pkm project archive 1
-
-    Examples:
-      pkm project archive 1
-    """
+    """Archive a project  eg: pkm project archive 1"""
     project_archive(project_id, API_BASE)
 
 

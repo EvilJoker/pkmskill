@@ -88,14 +88,14 @@ class TestCLIHelp:
         """Task add help should show examples"""
         r = run_cli("task add --help")
         assert r.returncode == 0
-        assert "Examples:" in r.stdout
+        assert "eg:" in r.stdout
         assert "priority" in r.stdout
 
     def test_task_ls_help(self):
         """Task ls help should show examples"""
         r = run_cli("task ls --help")
         assert r.returncode == 0
-        assert "Examples:" in r.stdout
+        assert "eg:" in r.stdout
         assert "--status" in r.stdout
 
 
@@ -431,9 +431,9 @@ class TestCLIProjectPath:
     """Test project list with path option"""
 
     def test_project_ls_path(self, wait_for_server):
-        """Should show project workspace path with -p flag"""
+        """Should show project workspace path with -a flag"""
         run_cli('project add "测试项目路径"')
-        r = run_cli("project ls -p")
+        r = run_cli("project ls -a")
         assert r.returncode == 0
         # Should show a path
         assert "/" in r.stdout or "~" in r.stdout
@@ -490,16 +490,6 @@ class TestCLITaskUpdateProgress:
         # Verify
         r = run_cli(f"task get {task_id}")
         assert "50" in r.stdout
-
-    def test_task_update_status(self, wait_for_server):
-        """Should update task status"""
-        r = run_cli('task add "测试状态更新" --priority medium')
-        task_id = r.stdout.split("Task created: ")[1].strip()
-
-        r = run_cli(f"task update {task_id} --status active")
-        assert r.returncode == 0
-        assert "Task updated" in r.stdout
-
 
 class TestCLIReflow:
     """Test reflow commands"""

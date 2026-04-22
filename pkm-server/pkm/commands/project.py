@@ -25,7 +25,7 @@ def project_add(name, description, api_base):
     click.echo(f"Project created: {project_id}")
 
 
-def project_ls(status, show_path, api_base):
+def project_ls(status, show_all, api_base):
     """List projects"""
     params = {}
     if status:
@@ -42,8 +42,8 @@ def project_ls(status, show_path, api_base):
                 for item in os.listdir(default_path):
                     if item.startswith("P_default"):
                         full_path = os.path.join(default_path, item)
-                        if show_path:
-                            click.echo(f"[default] P_default (active) -> {full_path}")
+                        if show_all:
+                            click.echo(f"[default] P_default [active] - {full_path}")
                         else:
                             click.echo(f"[default] P_default (active)")
                         return
@@ -64,18 +64,18 @@ def project_ls(status, show_path, api_base):
     # 先显示 default 项目
     if default_project:
         ws_path = default_project.get("workspace_path", "")
-        if show_path and ws_path:
-            click.echo(f"[default] {default_project['name']} ({default_project['status']}) -> {ws_path}")
+        if show_all:
+            click.echo(f"[default] {default_project['name']} [active] {default_project['id'][:10]} - {ws_path}")
         else:
-            click.echo(f"[default] {default_project['name']} ({default_project['status']})")
+            click.echo(f"[default] {default_project['name']} (active)")
 
     # 再显示其他项目，用序号
     for idx, p in enumerate(normal_projects, 1):
         ws_path = p.get("workspace_path", "")
-        if show_path and ws_path:
-            click.echo(f"[{idx}] {p['name']} ({p['status']}) -> {ws_path}")
+        if show_all:
+            click.echo(f"[{idx}] {p['name']} [active] {p['id'][:10]} - {ws_path}")
         else:
-            click.echo(f"[{idx}] {p['name']} ({p['status']})")
+            click.echo(f"[{idx}] {p['name']} ({p.get('status', 'active')})")
 
 
 def project_get(project_id, api_base):

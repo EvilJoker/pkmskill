@@ -91,14 +91,14 @@ class TestCLIHelp:
         """Task add help should show examples"""
         result = runner.invoke(task, ["add", "--help"])
         assert result.exit_code == 0
-        assert "Examples:" in result.output
+        assert "eg:" in result.output
         assert "priority" in result.output
 
     def test_task_ls_help(self, runner):
         """Task ls help should show examples"""
         result = runner.invoke(task, ["ls", "--help"])
         assert result.exit_code == 0
-        assert "Examples:" in result.output
+        assert "eg:" in result.output
         assert "--status" in result.output
 
 
@@ -130,6 +130,17 @@ class TestCLITask:
         assert result.exit_code == 0
         assert "Task created:" in result.output
 
+    def test_task_add_with_project(self, runner, wait_for_server):
+        """Should add task with project association"""
+        # Create a project first
+        result = runner.invoke(project, ["add", "测试项目关联"], catch_exceptions=False)
+        project_id = result.output.split("Project created: ")[1].strip()
+
+        # Add task with project
+        result = runner.invoke(task, ["add", "测试任务关联项目", "--priority", "high", "--project", project_id], catch_exceptions=False)
+        assert result.exit_code == 0
+        assert "Task created:" in result.output
+
     def test_task_get(self, runner, wait_for_server):
         """Should get task details"""
         # First create a task
@@ -158,6 +169,22 @@ class TestCLITask:
         result = runner.invoke(task, ["get", task_id], catch_exceptions=False)
         assert "测试CLI已更新" in result.output
         assert "high" in result.output
+
+    def test_task_update_multiple_fields(self, runner, wait_for_server):
+        """Should update multiple fields at once"""
+        # Create task
+        result = runner.invoke(task, ["add", "测试多字段更新", "--priority", "low"], catch_exceptions=False)
+        task_id = result.output.split("Task created: ")[1].strip()
+
+        # Update multiple fields
+        result = runner.invoke(task, ["update", task_id, "--title", "新标题", "--priority", "high", "--progress", "75"], catch_exceptions=False)
+        assert result.exit_code == 0
+
+        # Verify
+        result = runner.invoke(task, ["get", task_id], catch_exceptions=False)
+        assert "新标题" in result.output
+        assert "high" in result.output
+        assert "75" in result.output
 
     def test_task_done(self, runner, wait_for_server):
         """Should mark task as completed"""
@@ -357,13 +384,13 @@ class TestCLIProjectLsDisplay:
         assert not re.search(uuid_pattern, result.output), "不应显示UUID"
 
     def test_project_ls_with_path_flag(self, runner, wait_for_server):
-        """Should show project name with path when -p flag is used, like task ls -p"""
+        """Should show project name with path when -a flag is used"""
         # Create a project
         runner.invoke(project, ["add", "测试路径显示"], catch_exceptions=False)
-        result = runner.invoke(project, ["ls", "-p"], catch_exceptions=False)
+        result = runner.invoke(project, ["ls", "-a"], catch_exceptions=False)
         assert result.exit_code == 0
-        # 应该显示 [序号] 名称 (状态) -> 路径 格式
-        assert "->" in result.output
+        # 应该显示 [序号] 名称 [状态] uuid - 路径 格式
+        assert "-" in result.output
         assert "测试路径显示" in result.output
         assert "/" in result.output
 
@@ -454,14 +481,33 @@ class TestCLITaskUpdateProgress:
         result = runner.invoke(task, ["get", task_id], catch_exceptions=False)
         assert "50" in result.output
 
-    def test_task_update_status(self, runner, wait_for_server):
-        """Should update task status"""
-        result = runner.invoke(task, ["add", "测试状态更新", "--priority", "medium"], catch_exceptions=False)
+
+class TestCLIInteractiveTask:
+    """Test interactive task commands"""
+
+    def test_task_add_interactive(self, runner, wait_for_server):
+        """Should add task interactively"""
+        # Create a project first for selection
+        result = runner.invoke(project, ["add", "交互测试项目"], catch_exceptions=False)
+        project_id = result.output.split("Project created: ")[1].strip()
+
+        # Simulate interactive input: title, priority (3=low), due (empty), project (1)
+        inputs = "测试交互添加\n3\n\n1\n"
+        result = runner.invoke(task, ["add"], input=inputs, catch_exceptions=False)
+        assert result.exit_code == 0
+        assert "Task created:" in result.output
+
+    def test_task_update_interactive(self, runner, wait_for_server):
+        """Should update task interactively"""
+        # Create a task first
+        result = runner.invoke(task, ["add", "待更新任务", "--priority", "low"], catch_exceptions=False)
         task_id = result.output.split("Task created: ")[1].strip()
 
-        result = runner.invoke(task, ["update", task_id, "--status", "active"], catch_exceptions=False)
+        # Simulate interactive input: task index (1), new title (empty=skip), priority (empty=skip), progress (empty=skip)
+        inputs = "1\n\n\n\n"
+        result = runner.invoke(task, ["update"], input=inputs, catch_exceptions=False)
+        # Should complete without error (interactive mode entered and exited)
         assert result.exit_code == 0
-        assert "Task updated" in result.output
 
 
 class TestCLIReflow:
