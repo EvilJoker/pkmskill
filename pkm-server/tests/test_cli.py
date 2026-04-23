@@ -9,38 +9,52 @@ PKM_CLI = "pkm"
 API_BASE = os.environ.get("PKM_API_BASE", "http://localhost:8890")
 
 
-def run_cli(args, env=None):
+def run_cli(args, env=None, max_retries=3, retry_delay=1):
     """Run PKM CLI command directly via python module"""
     import subprocess
     import os
+    import time
 
     cmd = ["python", "-m", "pkm"] + args.split()
-    full_env = {**os.environ, "PKM_API_BASE": "http://localhost:7890"}
+    full_env = {**os.environ, "PKM_API_BASE": "http://localhost:8890"}
     if env:
         full_env.update(env)
-    result = subprocess.run(
-        cmd,
-        capture_output=True,
-        text=True,
-        env=full_env,
-        cwd="/app"
-    )
-    return result
+
+    last_error = None
+    for attempt in range(max_retries):
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            env=full_env,
+            cwd="/app"
+        )
+        # Retry on connection errors (returncode 1 with connection error in stderr)
+        if result.returncode != 0 and "Connection" in result.stderr and "refused" in result.stderr:
+            last_error = result
+            if attempt < max_retries - 1:
+                time.sleep(retry_delay)
+                continue
+        return result
+    # If all retries failed, return the last result
+    return last_error
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def wait_for_server():
-    """Wait for server to be ready"""
+    """Wait for server to be ready before each test"""
     import requests
     import time
 
-    max_retries = 30
-    for _ in range(max_retries):
+    max_retries = 60
+    for i in range(max_retries):
         try:
-            r = requests.get(f"{API_BASE}/health")
+            r = requests.get(f"{API_BASE}/health", timeout=2)
             if r.status_code == 200:
                 return
         except requests.exceptions.ConnectionError:
+            time.sleep(1)
+        except requests.exceptions.Timeout:
             time.sleep(1)
     pytest.fail("Server did not start in time")
 
@@ -340,6 +354,13 @@ class TestCLIProject:
         r = run_cli("project ls")
         assert "测试CLI删除索引项目" not in r.stdout
 
+    def test_project_delete_invalid_index(self, wait_for_server):
+        """Should fail when deleting with invalid index"""
+        # Try to delete with index 999 (assuming there are fewer projects)
+        r = run_cli("project delete 999")
+        assert r.returncode != 0
+        assert "Invalid index" in r.stderr or "Invalid index" in r.stdout
+
 
 class TestCLIServer:
     """Test CLI server commands"""
@@ -504,11 +525,6 @@ class TestCLIReflow:
         r = run_cli("reflow status --help")
         assert r.returncode == 0
 
-    def test_reflow_stage2_help(self):
-        """Reflow stage2 help should show usage"""
-        r = run_cli("reflow stage2 --help")
-        assert r.returncode == 0
-        assert "--batch-size" in r.stdout
 
     def test_reflow_run(self, wait_for_server):
         """Should trigger reflow"""
@@ -522,11 +538,6 @@ class TestCLIReflow:
         assert r.returncode == 0
         assert "Pending" in r.stdout or "Claude" in r.stdout
 
-    def test_reflow_stage2(self, wait_for_server):
-        """Should trigger stage2"""
-        r = run_cli("reflow stage2")
-        assert r.returncode == 0
-        assert "Starting" in r.stdout or "completed" in r.stdout
 
 
 class TestCLIErrorHandling:

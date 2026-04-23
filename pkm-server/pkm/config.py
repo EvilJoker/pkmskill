@@ -3,7 +3,7 @@ import yaml
 from pathlib import Path
 
 DEFAULT_CONFIG = {
-    "port": 7890,
+    "port": 8890,
     "log_level": "info",
 }
 

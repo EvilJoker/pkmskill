@@ -16,29 +16,42 @@ make build-client
 # 构建 Docker 镜像
 make build-server
 
-# 启动服务
+# 启动服务（生产环境，使用 snapshot 镜像）
 make start
+
+# 启动开发环境（本地构建，容器内执行 CLI）
+make start-dev
 
 # 查看日志
 make logs
 
-# 运行测试（CI 使用，包含覆盖率检查，本地不要使用）
+# 运行测试
 make test
-
-# 本地测试（使用 docker-compose.dev.yml，包含覆盖率验证）
-make test-local
 
 # 运行部署测试（CI 使用， 本地不使用）
 make test-deploy
 ```
 
+## 容器操作规则（重要）
+**禁止直接使用 docker compose 命令，必须使用 make 命令！**
+
+| 环境 | 命令 | 用途 |
+|------|------|------|
+| 生产环境 | `make start` | 部署真实环境，拉取 snapshot 镜像 |
+| 开发环境 | `make start-dev` | 日常开发调试，本地构建镜像 |
+
+**禁止的操作：**
+- ❌ `docker compose up/down/restart` — 必须用 `make start/start-dev`
+- ❌ `docker compose -f docker-compose.yml ...` — 必须用 `make start`
+- ❌ `docker compose -f docker-compose.dev.yml ...` — 必须用 `make start-dev`
+- ❌ 直接在宿主机执行 pkm CLI — CLI 在容器内执行
+
 ## 测试注意事项
 **重要：不要删除用户的实际数据！**
-- 本地测试使用 `make test-local`（使用 docker-compose.dev.yml）
-- `make test` 使用 docker-compose.yml
+- 本地测试使用 `make test`（使用 docker-compose.dev.yml）
 - **禁止执行** `docker exec pkm-server rm -f /root/.pkm/pkm.db` — 这会删除用户实际数据
 - 测试运行在容器内，使用的是容器内的数据库，不是本地测试数据库
-- 代码修改后需要重建镜像再测试：`docker compose build --no-cache && docker compose up -d`
+- 代码修改后需要重建镜像再测试：`make build-server && make start-dev`
 
 ## 代码质量要求
 - **行覆盖率**: 75% 以上
@@ -66,15 +79,15 @@ make test-deploy
 3. 等待基础镜像构建完成后，再触发业务镜像构建
 
 ### 本地开发
-**本地开发使用 docker-compose.dev.yml（基于 base-latest 本地构建）：**
+**开发环境使用 pkm-server目录下 `make start-dev`（本地构建镜像，CLI在容器内执行）：**
 ```bash
 make start-dev  # 本地构建 + 启动
-make status     # 检查服务状态
-make logs       # 查看日志
-make clean      # 清理容器
+make status-dev     # 检查服务状态
+make logs-dev      # 查看日志
+make clean-dev      # 清理容器
 ```
 
-**生产环境使用 docker-compose.prod.yml（远程镜像）：**
+**生产环境使用 `make start`（拉取 snapshot 镜像）：**
 ```bash
 make start      # 使用 snapshot 镜像启动
 ```
@@ -95,6 +108,9 @@ make start      # 使用 snapshot 镜像启动
 ## 配置
 - 默认配置路径: `~/.pkm/config.yaml`
 - 环境变量: `PKM_API_BASE` 可覆盖 API 地址（容器内测试时设为 `http://localhost:7890`）
+
+## 文档
+- 文档位置都在 `docs`, 禁止放在 `pkm-server/docs`
 
 ## 开发经验总结
 

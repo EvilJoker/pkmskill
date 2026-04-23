@@ -5,8 +5,6 @@ services:
       dockerfile: Dockerfile
     image: pkm:local
     container_name: pkm-server-dev
-    ports:
-      - "7890:7890"
     volumes:
       - .:/app
     working_dir: /app
@@ -15,4 +13,4 @@ services:
       - CLAUDECODE=1
       - ANTHROPIC_BASE_URL=${ANTHROPIC_BASE_URL}
       - ANTHROPIC_AUTH_TOKEN=${ANTHROPIC_AUTH_TOKEN}
-      - PKM_API_BASE=http://localhost:7890
+      - PKM_API_BASE=http://localhost:8890

@@ -64,15 +64,11 @@ async def lifespan(app: FastAPI):
         logger.info("Claude CLI 环境正常")
 
     # 启动定时任务调度器
-    from knowledge import run_reflow_cycle, run_stage2_cycle
+    from knowledge import run_reflow_cycle
 
-    # Stage1: 每 3 小时整点执行
-    scheduler.add_job(run_reflow_cycle, 'cron', minute=0)
-    logger.info("Stage1 cron job registered (minute=0, interval=3h)")
-
-    # Stage2: 每 3 小时 +30 分钟执行
-    scheduler.add_job(run_stage2_cycle, 'cron', minute=30)
-    logger.info("Stage2 cron job registered (minute=30, interval=3h)")
+    # reflow: 每天 00:00 执行 Project → Knowledge 回流
+    scheduler.add_job(run_reflow_cycle, 'cron', hour=0, minute=0)
+    logger.info("reflow cron job registered (daily at 00:00)")
 
     # Status cache: 每 60 秒更新
     scheduler.add_job(update_status_cache, 'interval', seconds=60)
@@ -84,7 +80,7 @@ async def lifespan(app: FastAPI):
 
     scheduler.start()
     logger.info("Scheduler started")
-    logger.info("PKM Server started on http://0.0.0.0:7890")
+    logger.info("PKM Server started on http://0.0.0.0:8890")
 
     yield  # ====== 服务器运行中 ======
 
@@ -272,41 +268,12 @@ if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=get_port())
 
 
-# Knowledge Reflow APIs
-@app.post("/api/knowledge/reflow")
-def trigger_reflow():
-    """手动触发知识回流"""
-    from knowledge import run_reflow_cycle
-    result = run_reflow_cycle()
-    return {
-        "triggered": True,
-        "processed": result["processed"],
-        "succeeded": result["succeeded"],
-        "failed": result["failed"],
-        "message": f"处理了 {result['processed']} 个任务，成功 {result['succeeded']}，失败 {result['failed']}"
-    }
-
-
 @app.get("/api/knowledge/status")
 def get_reflow_status():
     """获取回流状态"""
     from knowledge import get_reflow_status as get_status
     return get_status()
 
-
-@app.patch("/api/knowledge/config")
-def update_reflow_config(interval: Optional[int] = None,
-                          exclude_patterns: Optional[List[str]] = None,
-                          content_types: Optional[List[str]] = None):
-    """配置回流参数"""
-    from knowledge import REFLOW_CONFIG
-    if interval is not None:
-        REFLOW_CONFIG["interval"] = interval
-    if exclude_patterns is not None:
-        REFLOW_CONFIG["exclude_patterns"] = exclude_patterns
-    if content_types is not None:
-        REFLOW_CONFIG["content_types"] = content_types
-    return {"config": REFLOW_CONFIG}
 
 
 @app.post("/api/knowledge/approve/{task_id}")
@@ -322,23 +289,17 @@ def approve_task_reflow(task_id: str):
     return updated
 
 
-# Stage2 APIs
-@app.post("/api/knowledge/reflow/stage2")
-def trigger_stage2():
-    """手动触发 Stage2 提炼"""
-    from knowledge import run_stage2_cycle
-    result = run_stage2_cycle(batch_size=5)
+# reflow API (每天 00:00 自动执行)
+@app.post("/api/knowledge/reflow")
+def trigger_reflow():
+    """手动触发 reflow 回流（每天 00:00 自动执行）"""
+    from knowledge import run_reflow_cycle
+    result = run_reflow_cycle()
     return {
         "triggered": True,
         "processed": result["processed"],
         "succeeded": result["succeeded"],
         "failed": result["failed"],
-        "message": f"处理了 {result['processed']} 个项目，成功 {result['succeeded']}，失败 {result['failed']}"
+        "deleted": result.get("deleted", 0),
+        "message": f"处理了 {result['processed']} 个文件，成功 {result['succeeded']}，失败 {result['failed']}"
     }
-
-
-@app.get("/api/knowledge/reflow/status/stage2")
-def get_stage2_status():
-    """获取 Stage2 状态"""
-    from knowledge import get_stage2_status as get_status
-    return get_status()

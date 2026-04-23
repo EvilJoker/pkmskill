@@ -331,28 +331,3 @@ def list_pending_reflows() -> List[dict]:
         )
         return rows_to_dicts(cursor.fetchall())
 
-
-# Stage2: 项目提炼相关
-def get_projects_needing_reflow(limit: int = 5) -> List[dict]:
-    """获取需要提炼的项目（未提炼或已更新）"""
-    with get_db() as conn:
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT * FROM projects
-            WHERE status = 'active'
-            AND (refined = 0 OR refined_at IS NULL OR updated_at > refined_at)
-            ORDER BY updated_at DESC
-            LIMIT ?
-        """, (limit,))
-        return [row_to_project(row) for row in cursor.fetchall()]
-
-
-def mark_project_refined(project_id: str) -> None:
-    """标记项目已提炼"""
-    now = datetime.utcnow().isoformat()
-    with get_db() as conn:
-        cursor = conn.cursor()
-        cursor.execute(
-            "UPDATE projects SET refined = 1, refined_at = ? WHERE id = ?",
-            (now, project_id)
-        )

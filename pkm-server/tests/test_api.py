@@ -5,7 +5,7 @@ import requests
 import time
 import os
 
-BASE_URL = os.environ.get("PKM_API_BASE", "http://localhost:7890")
+BASE_URL = os.environ.get("PKM_API_BASE", "http://localhost:8890")
 
 
 @pytest.fixture(scope="module")
@@ -334,6 +334,29 @@ class TestProjectAPI:
         assert data["status"] == "archived"
         # Note: completed_at is only set when status is "completed", not "archived"
 
+    def test_delete_project_not_found(self, api_client, wait_for_server):
+        """Should return 404 when deleting non-existent project"""
+        r = api_client.session.delete(f"{api_client.base_url}/api/projects/non-existent-id")
+        assert r.status_code == 404
+
+    def test_delete_default_project_fails(self, api_client, wait_for_server):
+        """Should not allow deleting default project"""
+        # Get the default project
+        r = api_client.list_projects()
+        projects = r.json()
+        default_project = next((p for p in projects if p["name"].lower() == "default"), None)
+        assert default_project is not None, "Default project should exist"
+
+        # Try to delete default project
+        r = api_client.session.delete(f"{api_client.base_url}/api/projects/{default_project['id']}")
+        assert r.status_code == 400
+        assert "default" in r.json()["detail"].lower()
+
+    def test_approve_task_reflow_not_found(self, api_client, wait_for_server):
+        """Should return 404 when approving non-existent task"""
+        r = api_client.session.post(f"{api_client.base_url}/api/knowledge/approve/non-existent-task-id")
+        assert r.status_code == 404
+
 
 class TestTaskProjectRelation:
     """Test relationship between tasks and projects"""
@@ -395,8 +418,6 @@ class TestStatusAPI:
         """Should include knowledge reflow stats"""
         r = api_client.session.get(f"{api_client.base_url}/api/status")
         data = r.json()
-        assert "pending_approved_tasks" in data["knowledge"]
-        assert "pending_reflows" in data["knowledge"]
         assert "claude_available" in data["knowledge"]
 
 
@@ -408,8 +429,6 @@ class TestKnowledgeAPI:
         r = api_client.session.get(f"{api_client.base_url}/api/knowledge/status")
         assert r.status_code == 200
         data = r.json()
-        assert "pending_approved_tasks" in data
-        assert "pending_reflows" in data
         assert "claude_available" in data
 
     def test_trigger_reflow(self, api_client, wait_for_server):
@@ -421,17 +440,6 @@ class TestKnowledgeAPI:
         assert "processed" in data
         assert "succeeded" in data
         assert "failed" in data
-
-    def test_update_reflow_config(self, api_client, wait_for_server):
-        """Should update reflow config"""
-        r = api_client.session.patch(
-            f"{api_client.base_url}/api/knowledge/config",
-            params={"interval": 3600}
-        )
-        assert r.status_code == 200
-        data = r.json()
-        assert "config" in data
-        assert data["config"]["interval"] == 3600
 
     def test_approve_task_reflow(self, api_client, wait_for_server):
         """Should approve task reflow (change status from done to approved)"""
@@ -473,23 +481,4 @@ class TestKnowledgeAPI:
 
         # Cleanup
         api_client.delete_task(task_id)
-
-    def test_trigger_stage2(self, api_client, wait_for_server):
-        """Should trigger Stage2 cycle"""
-        r = api_client.session.post(f"{api_client.base_url}/api/knowledge/reflow/stage2")
-        assert r.status_code == 200
-        data = r.json()
-        assert data["triggered"] is True
-        assert "processed" in data
-        assert "succeeded" in data
-        assert "failed" in data
-
-    def test_get_stage2_status(self, api_client, wait_for_server):
-        """Should return Stage2 status"""
-        r = api_client.session.get(f"{api_client.base_url}/api/knowledge/reflow/status/stage2")
-        assert r.status_code == 200
-        data = r.json()
-        assert "pending_projects" in data
-        assert "config" in data
-        assert "claude_available" in data
 

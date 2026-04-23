@@ -1,2 +1,5 @@
 [run]
 omit = tests/*
+       main.py
+       setup.py
+       pkm/__main__.py

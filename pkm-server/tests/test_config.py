@@ -22,7 +22,7 @@ def test_default_config(tmp_path, monkeypatch):
     monkeypatch.setattr(pkm.config, "PKM_DIR", temp_dir)
 
     config = load_config()
-    assert config["port"] == 7890
+    assert config["port"] == 8890
     assert config["log_level"] == "info"
 
 
@@ -36,7 +36,7 @@ def test_get_port(tmp_path, monkeypatch):
     monkeypatch.setattr(pkm.config, "CONFIG_PATH", temp_config)
     monkeypatch.setattr(pkm.config, "PKM_DIR", temp_dir)
 
-    assert get_port() == 7890
+    assert get_port() == 8890
 
 
 def test_get_log_level():
@@ -82,7 +82,7 @@ def test_env_path_exists_branch(tmp_path, monkeypatch):
     temp_dir = tmp_path / ".pkm"
     temp_dir.mkdir()
     temp_config = temp_dir / "config.yaml"
-    temp_config.write_text("port: 7890\nlog_level: info\n")
+    temp_config.write_text("port: 8890\nlog_level: info\n")
     temp_env = temp_dir / ".env"
     temp_env.write_text("# Pre-existing env\n")
 
@@ -103,7 +103,7 @@ def test_env_path_not_exists_creates_file(tmp_path, monkeypatch):
     temp_dir = tmp_path / ".pkm"
     temp_dir.mkdir()
     temp_config = temp_dir / "config.yaml"
-    temp_config.write_text("port: 7890\nlog_level: info\n")
+    temp_config.write_text("port: 8890\nlog_level: info\n")
     temp_env = temp_dir / ".env"  # Does not exist initially
 
     monkeypatch.setattr(pkm.config, "CONFIG_PATH", temp_config)

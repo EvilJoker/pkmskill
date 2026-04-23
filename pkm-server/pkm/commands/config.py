@@ -12,7 +12,7 @@ ENV_PATH = PKM_DIR / ".env"
 IMAGE_NAME = "ghcr.io/eviljoker/pkm:snapshot"
 
 DEFAULT_CONFIG = {
-    "port": 7890,
+    "port": 8890,
     "host_port": 8890,
     "log_level": "info",
 }
@@ -23,7 +23,7 @@ DOCKER_COMPOSE_CONTENT = """services:
     container_name: pkm-server
     restart: unless-stopped
     ports:
-      - "8890:7890"
+      - "8890:8890"
     volumes:
       - ~/.pkm:/root/.pkm
     environment:

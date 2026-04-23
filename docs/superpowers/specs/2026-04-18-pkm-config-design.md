@@ -111,7 +111,7 @@ services:
     container_name: pkm-server
     restart: unless-stopped
     ports:
-      - "8890:7890"
+      - "8890:8890"
     volumes:
       - ~/.pkm:/root/.pkm
     environment:

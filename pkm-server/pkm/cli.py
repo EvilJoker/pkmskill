@@ -15,7 +15,7 @@ from pkm.commands.project import (
     project_delete, project_archive
 )
 from pkm.commands.inbox import inbox_add, extract_urls, generate_inbox_filename, parse_url_with_claude
-from pkm.commands.reflow import reflow_run, reflow_status, reflow_stage2
+from pkm.commands.reflow import reflow_run, reflow_status
 from pkm.commands.config import config_default, config_interactive
 from pkm.commands.server_cmd import (
     server_start as _server_start,
@@ -84,7 +84,7 @@ def cli():
 
   task done 完成 -> pkm task done <id>
 
-  reflow 知识提炼 -> 自动每3小时执行，也可手动 pkm reflow run / stage2
+  reflow 知识提炼 -> 自动每天 00:00 执行，也可手动 pkm reflow run
 
 Commands:
   inbox    Inbox commands for capturing notes
@@ -393,18 +393,6 @@ def status():
     Example:
       pkm reflow status"""
     reflow_status(API_BASE)
-
-
-@reflow.command()
-@click.option("--batch-size", default=5, help="每批处理项目数")
-def stage2(batch_size):
-    """Manually trigger Stage2 knowledge distillation
-
-    Example:
-      pkm reflow stage2
-      pkm reflow stage2 --batch-size 3
-    """
-    reflow_stage2(batch_size, API_BASE)
 
 
 if __name__ == "__main__":

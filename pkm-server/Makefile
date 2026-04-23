@@ -1,4 +1,4 @@
-.PHONY: install build start start-dev stop logs ps clean test test-deploy build-base build-client build-server status
+.PHONY: install build start start-dev stop logs ps clean test test-deploy build-base build-client build-server status stop-dev clean-dev status-dev exec-dev
 
 install:
 	pip install -e .
@@ -12,19 +12,11 @@ build-client:
 build:
 	docker-compose build --no-cache
 
+
 start:
 	docker-compose -f docker-compose.yml up -d
 	@echo "PKM Server started (production) on http://localhost:8890"
 
-start-dev:
-	docker-compose -f docker-compose.dev.yml build --no-cache
-	docker-compose -f docker-compose.dev.yml up -d
-	@echo "PKM Server started (dev) on http://localhost:7890"
-
-status:
-	@docker-compose -f docker-compose.dev.yml ps
-	@echo "=== Health Check ==="
-	@curl -s http://localhost:8891/health && echo "" || echo "Service not ready"
 
 stop:
 	docker-compose -f docker-compose.yml down
@@ -32,8 +24,28 @@ stop:
 logs:
 	docker-compose -f docker-compose.yml logs -f
 
+
+
+start-dev:
+	docker-compose -f docker-compose.dev.yml build --no-cache
+	docker-compose -f docker-compose.dev.yml up -d
+	@echo "PKM Server started (dev) on http://localhost:8890"
+
+stop-dev:
+	docker-compose -f docker-compose.dev.yml down
+
+clean-dev:
+	docker-compose -f docker-compose.dev.yml down -v
+	docker rmi pkm:local || true
+
+status-dev:
+	docker-compose -f docker-compose.dev.yml ps
+
 logs-dev:
 	docker-compose -f docker-compose.dev.yml logs -f
+
+exec-dev:
+	docker-compose -f docker-compose.dev.yml exec pkm-server bash
 
 ps:
 	docker-compose -f docker-compose.yml ps
@@ -59,7 +71,7 @@ test:
 	docker compose -f docker-compose.dev.yml up -d
 	@echo "Waiting for server to start (180s)..."
 	@sleep 180
-	docker compose -f docker-compose.dev.yml exec -e PKM_API_BASE=http://localhost:7890 -T pkm-server bash -c "pip install -e . -q && pytest tests/ --cov=. --cov-branch --cov-config=.coveragerc && coverage json -o /tmp/cov.json"; \
+	docker compose -f docker-compose.dev.yml exec -e PKM_API_BASE=http://localhost:8890 -T pkm-server bash -c "pip install -e . -q && pytest tests/ --cov=. --cov-branch --cov-config=.coveragerc && coverage json -o /tmp/cov.json"; \
 	TEST_EXIT=$$?; \
 	if [ $$TEST_EXIT -eq 0 ]; then \
 		docker compose -f docker-compose.dev.yml exec -T pkm-server bash -c 'python3 -c "import json; c=json.load(open(\"/tmp/cov.json\")); t=c[\"totals\"]; line=int(t.get(\"percent_statements_covered\", t[\"percent_covered\"])); branch=int(t.get(\"percent_branches_covered\",0)); print(f\"line={line}% branch={branch}%\"); exit(1 if line<75 or branch<55 else 0)"'; \

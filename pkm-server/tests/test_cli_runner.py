@@ -6,7 +6,7 @@ from unittest.mock import patch, MagicMock
 from click.testing import CliRunner
 
 # 设置 API_BASE 环境变量
-os.environ["PKM_API_BASE"] = os.environ.get("PKM_API_BASE", "http://localhost:7890")
+os.environ["PKM_API_BASE"] = os.environ.get("PKM_API_BASE", "http://localhost:8890")
 
 
 @pytest.fixture(scope="module")
@@ -523,12 +523,6 @@ class TestCLIReflow:
         result = runner.invoke(reflow, ["status", "--help"])
         assert result.exit_code == 0
 
-    def test_reflow_stage2_help(self, runner):
-        """Reflow stage2 help should show usage"""
-        result = runner.invoke(reflow, ["stage2", "--help"])
-        assert result.exit_code == 0
-        assert "--batch-size" in result.output
-
     def test_reflow_run(self, runner, wait_for_server):
         """Should trigger reflow"""
         result = runner.invoke(reflow, ["run"], catch_exceptions=False)
@@ -541,11 +535,6 @@ class TestCLIReflow:
         assert result.exit_code == 0
         assert "Pending" in result.output or "Claude" in result.output
 
-    def test_reflow_stage2(self, runner, wait_for_server):
-        """Should trigger stage2"""
-        result = runner.invoke(reflow, ["stage2"], catch_exceptions=False)
-        assert result.exit_code == 0
-        assert "Starting" in result.output or "completed" in result.output
 
 
 class TestCLIErrorHandling:
