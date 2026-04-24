@@ -59,9 +59,18 @@ do_snapshot() {
     # Pull Docker image
     pull_docker_image "$version" || echo "Docker pull failed, continuing..."
 
-    # Run pkm config to setup and start container
-    echo "Running pkm config --default..."
-    pkm config --default
+    # Check if config exists - if so, skip config (preserve user data)
+    if [ -f "$PKM_HOME/config.yaml" ]; then
+        echo ""
+        echo "Config already exists at $PKM_HOME/config.yaml"
+        echo "Skipping configuration - preserving user data"
+        echo ""
+        echo "To configure manually, run: pkm config"
+    else
+        # First install - run config
+        echo "First install - running pkm config..."
+        pkm config
+    fi
 
     echo ""
     echo "Snapshot installation complete!"
