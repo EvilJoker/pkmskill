@@ -48,12 +48,18 @@ def get_reflow_status() -> dict:
 # ============ reflow: Project → Knowledge 自动流转 ============
 
 # 知识库根目录
-KNOWLEDGE_BASE = os.path.expanduser("~/.pkm/90_Knowledge")
+KNOWLEDGE_BASE = os.path.expanduser("~/.pkm/40_Knowledge")
+WIKI_DIR = os.path.join(KNOWLEDGE_BASE, "_wiki")
+SCHEMA_DIR = os.path.join(KNOWLEDGE_BASE, "_schema")
 FILE_INDEX_PATH = os.path.join(KNOWLEDGE_BASE, "file_index.json")
-INDEX_PATH = os.path.join(KNOWLEDGE_BASE, "index.md")
+INDEX_PATH = os.path.join(WIKI_DIR, "index.md")
+INDEX_YAML_PATH = os.path.join(WIKI_DIR, "index.yaml")
 
 # 项目空间根目录
-PROJECTS_BASE = os.path.expanduser("~/.pkm/60_Projects")
+PROJECTS_BASE = os.path.expanduser("~/.pkm/20_Projects")
+
+# Raw 层根目录
+RAW_BASE = os.path.expanduser("~/.pkm/30_Raw")
 
 @dataclass
 class FileEntry:
@@ -163,10 +169,10 @@ def scan_projects() -> ChangeSet:
 def find_related_entries(content: str, max_results: int = 3) -> list[dict]:
     """查找与内容相关的现有知识条目"""
     related = []
-    if not os.path.exists(KNOWLEDGE_BASE):
+    if not os.path.exists(WIKI_DIR):
         return related
 
-    for root, dirs, files in os.walk(KNOWLEDGE_BASE):
+    for root, dirs, files in os.walk(WIKI_DIR):
         for filename in files:
             if not filename.endswith(".md") or filename == "index.md":
                 continue
@@ -240,30 +246,29 @@ def analyze_and_merge(filepath: Path, project_name: str) -> dict:
 直接写入知识文件，不要只输出计划：
 
 **action: create** 时：
-将新知识条目写入 {KNOWLEDGE_BASE}/generated/{{id}}.md
+将新知识条目写入 {WIKI_DIR}/{{topic}}/{{title}}.md
 文件内容格式：
 ```markdown
-### id
-{{id}}
+---
+title: {{title}}
+type: concept
+sources: [{rel_path}]
+related: []
+created: {datetime.now().strftime('%Y-%m-%d')}
+updated: {datetime.now().strftime('%Y-%m-%d')}
+---
 
-### title
-{{title}}
+# {{title}}
 
-### version
-1
+## 核心概念
+{{content摘要}}
 
-### sources
-- {rel_path}
-
-### type
-经验 | 方案 | 概念 | 参考
-
-### content
-{{content}}
+## 相关
+- [[相关条目]]
 ```
 
 **action: update** 时：
-将更新内容追加到现有条目文件，追加到 sources 并更新 content。
+将更新内容追加到现有条目文件，追加到 sources 并更新 updated 日期。
 
 **action: skip 或 discard** 时：
 无需文件操作。
@@ -272,6 +277,8 @@ def analyze_and_merge(filepath: Path, project_name: str) -> dict:
 1. 串行执行，不允许并行
 2. 直接写文件，不要只是输出计划
 3. 一个文件只创建一个或更新一个知识条目
+4. 使用中文标题，如 AI基础、职业发展等
+5. topic 使用中文目录名，如 AI、编程、职业发展
 """
 
     try:
@@ -314,78 +321,95 @@ def analyze_and_merge(filepath: Path, project_name: str) -> dict:
 
 
 def update_index() -> None:
-    """扫描知识库所有条目，更新 index.md"""
-    sections = {"经验": [], "方案": [], "概念": [], "参考": []}
+    """扫描知识库所有条目，更新 index.md 和 index.yaml"""
+    import yaml
 
-    if not os.path.exists(KNOWLEDGE_BASE):
+    # 按 topic 组织条目
+    topics: Dict[str, list] = {}
+
+    if not os.path.exists(WIKI_DIR):
         return
 
-    for root, dirs, files in os.walk(KNOWLEDGE_BASE):
+    for root, dirs, files in os.walk(WIKI_DIR):
         for filename in files:
             if not filename.endswith(".md") or filename == "index.md":
                 continue
 
             filepath = Path(root) / filename
+            rel_dir = filepath.relative_to(WIKI_DIR).parent
+
             try:
                 with open(filepath, "r", encoding="utf-8") as f:
                     content = f.read()
 
-                entry_type = "参考"
-                if "### type\n" in content:
-                    type_start = content.find("### type\n") + len("### type\n")
-                    type_end = content.find("\n", type_start)
-                    if type_end == -1:
-                        type_end = len(content)
-                    type_line = content[type_start:type_end].strip().lower()
-                    if "经验" in type_line:
-                        entry_type = "经验"
-                    elif "方案" in type_line:
-                        entry_type = "方案"
-                    elif "概念" in type_line:
-                        entry_type = "概念"
-
+                # 解析 frontmatter
                 title = filename.replace(".md", "")
-                if "### title\n" in content:
-                    title_start = content.find("### title\n") + len("### title\n")
-                    title_end = content.find("\n", title_start)
-                    if title_end == -1:
-                        title_end = len(content)
-                    title = content[title_start:title_end].strip()
+                entry_type = "concept"
+                sources = []
+                related = []
 
-                source = "未知来源"
-                if "### sources\n" in content:
-                    source_start = content.find("### sources\n") + len("### sources\n")
-                    source_end = content.find("\n###", source_start)
-                    if source_end == -1:
-                        source_end = len(content)
-                    source_lines = content[source_start:source_end].strip().split("\n")
-                    if source_lines:
-                        source = source_lines[0].strip("- ").split("(")[0].strip()
+                if rel_dir != Path("."):
+                    topic = str(rel_dir)
+                else:
+                    topic = "未分类"
 
-                version = "v1"
-                if "### version\n" in content:
-                    version_start = content.find("### version\n") + len("### version\n")
-                    version_end = content.find("\n", version_start)
-                    if version_end == -1:
-                        version_end = len(content)
-                    version = f"v{content[version_start:version_end].strip()}"
+                if "---" in content:
+                    frontmatter_end = content.find("---", 2)
+                    if frontmatter_end != -1:
+                        frontmatter_text = content[3:frontmatter_end].strip()
+                        try:
+                            fm = yaml.safe_load(frontmatter_text)
+                            if fm:
+                                title = fm.get("title", title)
+                                entry_type = fm.get("type", "concept")
+                                sources = fm.get("sources", [])
+                                related = fm.get("related", [])
+                        except yaml.YAMLError:
+                            pass
 
-                entry_link = f"- [{title}]({filename}) - 来源：{source} - {version}"
-                sections[entry_type].append(entry_link)
+                if topic not in topics:
+                    topics[topic] = []
+
+                topics[topic].append({
+                    "title": title,
+                    "type": entry_type,
+                    "sources": sources,
+                    "related": related,
+                    "path": str(filepath.relative_to(WIKI_DIR))
+                })
 
             except (OSError, IOError):
                 continue
 
-    index_lines = ["# Knowledge Index\n"]
-    for section, entries in sections.items():
-        index_lines.append(f"\n## {section}\n")
-        if entries:
-            index_lines.extend(entries)
-        else:
-            index_lines.append("(暂无)")
+    # 生成 index.md
+    index_lines = ["# Knowledge Index\n", "\n## 按主题浏览\n"]
 
+    for topic in sorted(topics.keys()):
+        index_lines.append(f"\n### {topic}\n")
+        for entry in sorted(topics[topic], key=lambda x: x["title"]):
+            index_lines.append(f"- [[{entry['title']}]]")
+
+    index_lines.append("\n## 最近更新\n")
+    index_lines.append(f"- {datetime.now().strftime('%Y-%m-%d')}: 更新索引\n")
+
+    os.makedirs(WIKI_DIR, exist_ok=True)
     with open(INDEX_PATH, "w", encoding="utf-8") as f:
         f.write("\n".join(index_lines))
+
+    # 生成 index.yaml
+    concepts = {}
+    for topic in topics:
+        for entry in topics[topic]:
+            concepts[entry["title"]] = {
+                "path": entry["path"],
+                "type": entry["type"],
+                "sources": entry["sources"],
+                "related": entry["related"]
+            }
+
+    yaml_data = {"concepts": concepts}
+    with open(INDEX_YAML_PATH, "w", encoding="utf-8") as f:
+        yaml.dump(yaml_data, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
 
 
 def run_reflow_cycle() -> dict:

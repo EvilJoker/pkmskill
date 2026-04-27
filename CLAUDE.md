@@ -102,12 +102,29 @@ make start      # 使用 snapshot 镜像启动
 - `main.py` - FastAPI 应用，定义所有 REST API 端点
 - `database.py` - SQLite 数据库操作层
 - `models.py` - Pydantic 数据模型
+- `knowledge.py` - 知识回流核心逻辑，支持 Wiki 增量更新
 - `pkm/cli.py` - Click CLI 命令行接口
 - `pkm/config.py` - 配置文件加载模块
 
+## 目录结构
+```
+~/.pkm/
+├── 10_Tasks/           # 任务层
+├── 20_Projects/        # 项目层（Raw Sources）
+├── 30_Raw/            # Raw 层
+├── 40_Knowledge/      # Wiki 层
+│   ├── _wiki/         # LLM 维护的概念页面
+│   │   ├── index.md   # 总导航
+│   │   ├── index.yaml # 结构化索引
+│   │   └── {topic}/   # 按主题分类
+│   └── _schema/       # Wiki 维护规则
+└── 80_Archives/      # 归档层
+```
+
 ## 配置
 - 默认配置路径: `~/.pkm/config.yaml`
-- 环境变量: `PKM_API_BASE` 可覆盖 API 地址（容器内测试时设为 `http://localhost:7890`）
+- 环境变量: `PKM_API_BASE` 可覆盖 API 地址（容器内测试时设为 `http://localhost:8890`）
+- 知识库路径: `~/.pkm/40_Knowledge`（Wiki 格式）
 
 ## 文档
 - 文档位置都在 `docs`, 禁止放在 `pkm-server/docs`

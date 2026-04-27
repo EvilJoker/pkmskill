@@ -5,59 +5,82 @@ PKM_HOME="${PKM_HOME:-$HOME/.pkm}"
 REPO="EvilJoker/pkmskill"
 GH_DOWNLOAD="https://github.com/$REPO/releases/download"
 IMAGE="ghcr.io/eviljoker/pkm"
+VERSION="snapshot"
+WHL_NAME="pkm-0.0.0-py3-none-any.whl"
 
 usage() {
-    echo "Usage: $0 [command]"
+    echo "Usage: $0 [options]"
     echo ""
-    echo "Commands:"
-    echo "  snapshot    Install latest snapshot (wheel + Docker image)"
-    echo "  -h, --help  Show this help message"
+    echo "Options:"
+    echo "  -h, --help     Show this help message"
     echo ""
     echo "Examples:"
-    echo "  $0 snapshot    # Install latest snapshot version"
+    echo "  $0              # Install latest snapshot"
 }
 
-download_wheel() {
-    local version=${1:-snapshot}
-    # wheel 文件名格式: pkm-{version}-py3-none-any.whl
-    # snapshot 版本对应 0.0.0
-    local whl_name="pkm-0.0.0-py3-none-any.whl"
-    local whl_url="$GH_DOWNLOAD/$version/$whl_name"
-
+download_and_install_wheel() {
+    local whl_url="$GH_DOWNLOAD/$VERSION/$WHL_NAME"
     echo "Downloading wheel from: $whl_url"
-    curl -sL "$whl_url" -o "$PKM_HOME/$whl_name" || {
+    curl -sL "$whl_url" -o "$PKM_HOME/$WHL_NAME" || {
         echo "Failed to download wheel from $whl_url"
         return 1
     }
-
     echo "Installing wheel..."
-    pip install "$PKM_HOME/$whl_name"
+    pip install --force-reinstall --no-deps --ignore-installed --find-links "$PKM_HOME" "$PKM_HOME/$WHL_NAME"
 }
 
 pull_docker_image() {
-    local tag=${1:-snapshot}
-    echo "Pulling Docker image: $IMAGE:$tag"
-    docker pull "$IMAGE:$tag" || {
+    echo "Pulling Docker image: $IMAGE:$VERSION"
+    docker pull "$IMAGE:$VERSION" || {
         echo "Docker pull failed"
         return 1
     }
 }
 
-do_snapshot() {
+setup_docker_compose() {
+    echo "Setting up docker-compose.yml..."
+    local compose_file="$PKM_HOME/docker-compose.yml"
+    cat > "$compose_file" << 'EOF'
+services:
+  pkm:
+    image: ghcr.io/eviljoker/pkm:snapshot
+    container_name: pkm-server
+    restart: unless-stopped
+    ports:
+      - "8890:8890"
+    volumes:
+      - ~/.pkm:/root/.pkm
+    environment:
+      - CLAUDECODE=1
+      - ANTHROPIC_BASE_URL=${BASE_URL}
+      - ANTHROPIC_AUTH_TOKEN=${API_KEY}
+      - ANTHROPIC_MODEL=${MODEL}
+EOF
+    echo "Docker compose file created at: $compose_file"
+}
+
+cleanup_old_containers() {
+    echo "Cleaning up old containers..."
+    docker rm -f pkm-server pkm-server-dev 2>/dev/null || true
+}
+
+do_install() {
     echo "Installing PKM snapshot..."
 
     mkdir -p "$PKM_HOME"
+    echo "Version: $VERSION"
 
-    # Use snapshot tag directly (no API needed)
-    local version="snapshot"
-    local whl_name="pkm-0.0.0-py3-none-any.whl"
-    echo "Version: $version"
+    # Clean up old containers to avoid conflicts
+    cleanup_old_containers
 
     # Download and install wheel
-    download_wheel "$version" || echo "Wheel download failed, continuing..."
+    download_and_install_wheel || echo "Wheel download failed, continuing..."
 
     # Pull Docker image
-    pull_docker_image "$version" || echo "Docker pull failed, continuing..."
+    pull_docker_image || echo "Docker pull failed, continuing..."
+
+    # Setup docker-compose.yml with correct port mapping
+    setup_docker_compose
 
     # Check if config exists - if so, skip config (preserve user data)
     if [ -f "$PKM_HOME/config.yaml" ]; then
@@ -73,10 +96,10 @@ do_snapshot() {
     fi
 
     echo ""
-    echo "Snapshot installation complete!"
+    echo "Installation complete!"
     echo "Installed to: $PKM_HOME"
-    echo "Wheel: $PKM_HOME/$whl_name"
-    echo "Docker image: $IMAGE:$version"
+    echo "Wheel: $PKM_HOME/$WHL_NAME"
+    echo "Docker image: $IMAGE:$VERSION"
     echo ""
     echo "Services: pkm server start/stop/status"
 }
@@ -87,18 +110,8 @@ case "${1:-}" in
         usage
         exit 0
         ;;
-    snapshot)
-        do_snapshot
-        exit 0
-        ;;
     *)
-        if [ -z "$1" ]; then
-            usage
-            exit 1
-        else
-            echo "Unknown command: $1"
-            usage
-            exit 1
-        fi
+        do_install
+        exit 0
         ;;
 esac

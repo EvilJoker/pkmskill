@@ -209,48 +209,62 @@ class TestUpdateIndex:
     """Test update_index function"""
 
     def test_update_index_creates_file(self, temp_workspace):
-        """Should create index.md"""
+        """Should create index.md and index.yaml"""
         import knowledge
 
         original_knowledge = knowledge.KNOWLEDGE_BASE
+        original_wiki_dir = knowledge.WIKI_DIR
         original_index_path = knowledge.INDEX_PATH
+        original_index_yaml = knowledge.INDEX_YAML_PATH
         knowledge.KNOWLEDGE_BASE = temp_workspace
-        knowledge.INDEX_PATH = os.path.join(temp_workspace, "index.md")
+        wiki_dir = os.path.join(temp_workspace, "_wiki")
+        knowledge.WIKI_DIR = wiki_dir
+        knowledge.INDEX_PATH = os.path.join(wiki_dir, "index.md")
+        knowledge.INDEX_YAML_PATH = os.path.join(wiki_dir, "index.yaml")
 
-        test_dir = os.path.join(temp_workspace, "01principles")
-        os.makedirs(test_dir, exist_ok=True)
-        with open(os.path.join(test_dir, "test.md"), "w") as f:
-            f.write("""### id
-test-001
+        # Create new-style wiki entry with frontmatter
+        topic_dir = os.path.join(wiki_dir, "AI")
+        os.makedirs(topic_dir, exist_ok=True)
+        with open(os.path.join(topic_dir, "AI基础.md"), "w") as f:
+            f.write("""---
+title: AI基础
+type: concept
+sources: [test_project/notes.md]
+related: [AI工具]
+created: 2026-04-27
+updated: 2026-04-27
+---
 
-### title
-测试原则
+# AI基础
 
-### version
-1
+## 核心概念
+- 机器学习是...
 
-### sources
-- test_project/notes.md
-
-### type
-经验
-
-### content
-测试内容
+## 相关
+- [[AI工具]]
 """)
 
         knowledge.update_index()
 
-        index_path = os.path.join(temp_workspace, "index.md")
-        assert os.path.exists(index_path)
+        index_path = os.path.join(wiki_dir, "index.md")
+        assert os.path.exists(index_path), f"index.md not found at {index_path}"
 
         with open(index_path, "r") as f:
             content = f.read()
         assert "Knowledge Index" in content
-        assert "测试原则" in content
+        assert "AI基础" in content
+
+        yaml_path = os.path.join(wiki_dir, "index.yaml")
+        assert os.path.exists(yaml_path), f"index.yaml not found at {yaml_path}"
+
+        with open(yaml_path, "r") as f:
+            yaml_content = f.read()
+        assert "AI基础" in yaml_content
 
         knowledge.KNOWLEDGE_BASE = original_knowledge
+        knowledge.WIKI_DIR = original_wiki_dir
         knowledge.INDEX_PATH = original_index_path
+        knowledge.INDEX_YAML_PATH = original_index_yaml
 
 
 class TestRunReflowCycle:

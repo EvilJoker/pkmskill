@@ -3,13 +3,16 @@ from pathlib import Path
 from datetime import datetime
 from typing import Optional
 
-WORKSPACE_BASE = os.path.expanduser("~/.pkm")
-TASK_WORKSPACE_BASE = os.path.join(WORKSPACE_BASE, "10_Tasks")
-PROJECT_WORKSPACE_BASE = os.path.join(WORKSPACE_BASE, "60_Projects")
-
-# 50_Raw 路径
-RAW_BASE = os.path.join(WORKSPACE_BASE, "50_Raw")
-INBOX_BASE = os.path.join(RAW_BASE, "inbox")
+from pkm.constants import (
+    WORKSPACE_BASE,
+    TASK_WORKSPACE_BASE,
+    PROJECT_WORKSPACE_BASE,
+    RAW_BASE,
+    INBOX_BASE,
+    ARCHIVE_BASE,
+    DEFAULT_PROJECT_PREFIX,
+    DEFAULT_PROJECT_NAME,
+)
 
 
 def get_workspace_base_path() -> str:
@@ -148,8 +151,6 @@ last_updated: {now}
     return workspace_path
 
 
-DEFAULT_PROJECT_NAME = "default"
-ARCHIVE_BASE = os.path.join(WORKSPACE_BASE, "80_Archives")
 
 
 def get_archive_base() -> str:
@@ -161,11 +162,11 @@ def get_archive_base() -> str:
 def create_default_project_workspace() -> str:
     """创建 default 项目工作区（如果不存在）"""
     base_dir = get_project_workspace_base()
-    default_name = f"P_default"
+    default_name = DEFAULT_PROJECT_PREFIX
 
     # 检查是否已存在
     for item in os.listdir(base_dir):
-        if item == default_name or item.startswith("P_default"):
+        if item == default_name or item.startswith(default_name):
             return os.path.join(base_dir, item)
 
     # 创建 default 项目
@@ -198,7 +199,7 @@ def get_default_project_workspace() -> str:
     """获取或创建 default 项目工作区路径"""
     base_dir = get_project_workspace_base()
     for item in os.listdir(base_dir):
-        if item == "P_default" or item.startswith("P_default"):
+        if item == DEFAULT_PROJECT_PREFIX or item.startswith(DEFAULT_PROJECT_PREFIX):
             return os.path.join(base_dir, item)
     # 如果不存在，创建它
     return create_default_project_workspace()

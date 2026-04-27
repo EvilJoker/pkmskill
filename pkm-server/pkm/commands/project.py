@@ -6,6 +6,7 @@ import os
 import shutil
 
 from pkm.workspace import create_project_workspace
+from pkm.constants import PROJECT_WORKSPACE_BASE, DEFAULT_PROJECT_PREFIX
 
 
 def project_add(name, description, api_base):
@@ -36,16 +37,16 @@ def project_ls(status, show_all, api_base):
 
     if not projects:
         # 检查 default 项目工作区是否存在
-        default_path = os.path.join(os.path.expanduser("~/.pkm"), "60_Projects")
+        default_path = PROJECT_WORKSPACE_BASE
         try:
             if os.path.isdir(default_path):
                 for item in os.listdir(default_path):
-                    if item.startswith("P_default"):
+                    if item.startswith("DEFAULT_PROJECT_PREFIX"):
                         full_path = os.path.join(default_path, item)
                         if show_all:
-                            click.echo(f"[default] P_default [active] - {full_path}")
+                            click.echo(f"[default] DEFAULT_PROJECT_PREFIX [active] - {full_path}")
                         else:
-                            click.echo(f"[default] P_default (active)")
+                            click.echo(f"[default] DEFAULT_PROJECT_PREFIX (active)")
                         return
         except OSError:
             pass

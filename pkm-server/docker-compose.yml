@@ -3,7 +3,7 @@ services:
     image: ghcr.io/eviljoker/pkm:snapshot
     container_name: pkm-server
     ports:
-      - "8890:7890"
+      - "8890:8890"
     volumes:
       - .:/app
       - ~/.pkm:/root/.pkm

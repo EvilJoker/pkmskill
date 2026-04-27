@@ -165,9 +165,9 @@ def test_generate_task_workspace_name_without_name():
 
 
 def test_get_raw_base():
-    """测试获取 50_Raw 目录"""
+    """测试获取 30_Raw 目录"""
     base = get_raw_base()
-    assert "50_Raw" in base
+    assert "30_Raw" in base
     assert os.path.exists(base)
 
 
